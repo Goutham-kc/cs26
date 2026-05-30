@@ -11,6 +11,7 @@ const oaqRoutes   = require('./routes/oaq');
 const userRoutes  = require('./routes/user');
 const sectionRoutes = require('./routes/sections');
 const adminRoutes = require('./routes/admin');
+const threadRoutes = require('./routes/threads');
 
 const app    = express();
 const server = http.createServer(app);
@@ -34,6 +35,7 @@ app.use('/api/oaq',   oaqRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/sections', sectionRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/threads', threadRoutes);
 
 // Socket.io connection
 io.on('connection', (socket) => {

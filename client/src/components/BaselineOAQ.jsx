@@ -71,7 +71,7 @@ export default function BaselineOAQ({ filteredSections }) {
         </p>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           
-          <select value={sort} onChange={e => setSort(e.target.value)} style={{ padding: '4px 8px', borderRadius: 'var(--radius)', border: '1px solid var(--color-border)', fontSize: 11, fontFamily: 'var(--font-mono)', background: 'var(--color-bg)', color: 'var(--color-primary)', cursor: 'pointer' }}>
+          <select value={sort} onChange={e => setSort(e.target.value)} style={{ padding: '4px 8px', borderRadius: 'var(--radius)', border: '1px solid var(--color-border)', fontSize: 11, fontFamily: 'var(--font-mono)', background: 'var(--color-bg)', color: 'var(--color-text-primary)', cursor: 'pointer' }}>
             {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </div>

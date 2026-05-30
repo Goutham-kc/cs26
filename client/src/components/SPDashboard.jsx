@@ -126,9 +126,9 @@ function TrendChart({ trend }) {
       </div>
     );
   }
-  const max = Math.max(...trend.map(d => d.daily), 1);
+  const max = Math.max(...trend.map(d => Math.abs(d.daily)), 1);
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 80 }}>
+    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 80, overflow: 'hidden' }}>
       {trend.map((d, i) => {
         const h = Math.max(4, Math.abs((d.daily / max) * 80));
         const isNeg = d.daily < 0;

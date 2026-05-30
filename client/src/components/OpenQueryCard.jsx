@@ -71,7 +71,7 @@ export default function OpenQueryCard({ issue, currentUser, onVote }) {
       {currentUser && (
         <form onSubmit={handleSubmit} style={{ padding: '10px 18px', borderTop: '1px solid var(--color-border)', display: 'flex', gap: 8 }}>
           <input value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Submit your answer…" style={{ flex: 1, padding: '6px 10px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', fontSize: 12, fontFamily: 'var(--font-mono)', background: 'var(--color-bg)', color: 'var(--color-text-primary)' }} />
-          <button type="submit" disabled={submitting || !replyText.trim()} style={{ padding: '6px 14px', background: submitting || !replyText.trim() ? 'var(--color-border)' : 'var(--color-primary)', color: 'var(--color-inv-text)', border: 'none', borderRadius: 'var(--radius)', fontSize: 12, cursor: submitting ? 'not-allowed' : 'pointer', fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap' }}>
+          <button type="submit" disabled={submitting || !replyText.trim()} style={{ padding: '6px 14px', background: submitting || !replyText.trim() ? 'var(--color-border)' : 'var(--color-primary)', color: submitting || !replyText.trim() ? 'var(--color-text-muted)' : 'var(--color-inv-text)', border: 'none', borderRadius: 'var(--radius)', fontSize: 12, cursor: submitting ? 'not-allowed' : 'pointer', fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap' }}>
             {submitting ? '…' : 'Submit'}
           </button>
         </form>

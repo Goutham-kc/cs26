@@ -1,5 +1,5 @@
-# OAQ System — Vicharanashala
-**Once Asked Questions** · MERN Stack · v2.0
+# OAQ & Threads System — Vicharanashala
+**Once Asked Questions · Threaded discussions · SP & Wallet System · MERN Stack · v2.0**
 
 Every query the team answers once becomes a permanent asset. Subsequent interns get that answer in under three seconds without human involvement.
 
