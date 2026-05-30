@@ -4,28 +4,29 @@ import { useSocket } from '../hooks/useSocket';
 
 // ── Monochrome design tokens (spec §12) ──────────────────────────────────────
 const T = {
-  bg:         '#FFFFFF',
-  surface:    '#F2F2F2',
-  border:     '#E5E5E5',
-  primary:    '#111111',
-  secondary:  '#444444',
-  muted:      '#888888',
-  invBg:      '#000000',
-  invText:    '#FFFFFF',
-  red:        '#DC2626',
-  teal:       '#0D9488',
-  tealDark:   '#0F766E',
-  tealLight:  '#CCFBF1',
-  navyDark:   '#1E3A5F',
-  navyLight:  '#DBEAFE',
-  radius:     '4px',
-  mono:       "'JetBrains Mono', 'Courier New', monospace",
+  bg:         'var(--color-bg)',
+  surface:    'var(--color-surface)',
+  surfaceHover: 'var(--color-surface-hover)',
+  border:     'var(--color-border)',
+  primary:    'var(--color-text-primary)',
+  secondary:  'var(--color-text-secondary)',
+  muted:      'var(--color-text-muted)',
+  invBg:      'var(--color-invert-bg)',
+  invText:    'var(--color-invert-text)',
+  red:        'var(--color-red)',
+  teal:       'var(--color-teal)',
+  tealDark:   'var(--color-teal-dark)',
+  tealLight:  'var(--color-teal-light)',
+  navyDark:   'var(--color-navy-dark)',
+  navyLight:  'var(--color-navy-light)',
+  radius:     'var(--radius)',
+  mono:       "var(--font-mono)",
 };
 
 const EVENT_META = {
   FCFS_WIN:         { label: 'FCFS WIN',    bg: T.invBg,  color: T.invText },
   QUERY_BONUS:      { label: 'QUERY',       bg: T.surface,color: T.primary },
-  ESCALATION_BONUS: { label: 'ESCALATION',  bg: '#E0E0E0',color: T.primary },
+  ESCALATION_BONUS: { label: 'ESCALATION',  bg: T.border, color: T.primary },
   PENALTY:          { label: 'PENALTY',     bg: T.red,    color: T.invText },
 };
 
@@ -488,7 +489,7 @@ export default function SPDashboard({ user }) {
               <div key={entry._id || i} style={{
                 display: 'grid', gridTemplateColumns: '36px 1fr 80px 60px',
                 padding: '14px 20px', alignItems: 'center', gap: 8,
-                background: entry.isYou ? T.surface : i % 2 === 0 ? T.bg : '#FAFAFA',
+                background: entry.isYou ? T.surface : i % 2 === 0 ? T.bg : T.surfaceHover,
                 borderTop: `0.5px solid ${T.border}`,
                 borderLeft: `3px solid ${entry.isYou ? T.primary : 'transparent'}`,
               }}>

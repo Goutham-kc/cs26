@@ -2,10 +2,15 @@ import { useState } from 'react';
 import { login, register } from '../services/api';
 
 const T = {
-  primary: '#111111', muted: '#888888', border: '#CCCCCC',
-  surface: '#F2F2F2', red: '#FF3333',
-  mono: "'JetBrains Mono', 'Courier New', monospace",
-  radius: '2px',
+  bg:         'var(--color-bg)',
+  primary:    'var(--color-text-primary)',
+  secondary:  'var(--color-text-secondary)',
+  muted:      'var(--color-text-muted)',
+  border:     'var(--color-border)',
+  surface:    'var(--color-surface)',
+  red:        'var(--color-red)',
+  mono:       'var(--font-mono)',
+  radius:     'var(--radius)',
 };
 
 export default function LoginForm({ onAuth }) {
@@ -95,7 +100,7 @@ export default function LoginForm({ onAuth }) {
           <div style={{ fontSize: 11, color: T.red, marginBottom: 12, letterSpacing: '0.06em' }}>{error}</div>
         )}
         <button type="submit" disabled={busy} style={{
-          width: '100%', padding: '12px', background: T.primary, color: '#FFF',
+          width: '100%', padding: '12px', background: T.primary, color: T.bg,
           border: 'none', borderRadius: T.radius, fontFamily: T.mono,
           fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase',
           cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.6 : 1,

@@ -20,7 +20,7 @@ export default function Topbar({ view, onViewChange }) {
           ['oaq', 'OAQ'],
           ['tracker', 'Tracker'],
           ['sp', 'SP Wallet'],
-          ...(user?.role === 'admin' ? [['admin', 'Admin']] : [])
+          ...((user?.role === 'admin' || user?.role === 'superadmin') ? [['admin', 'Admin']] : [])
         ].map(([key, label]) => (
           <button
             key={key}

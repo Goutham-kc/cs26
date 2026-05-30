@@ -10,6 +10,14 @@
   --color-text-muted:     #888888;
   --color-invert-bg:      #000000;
   --color-invert-text:    #FFFFFF;
+  --color-teal:           #0D9488;
+  --color-teal-dark:      #0F766E;
+  --color-teal-light:     #CCFBF1;
+  --color-navy-dark:      #1E3A5F;
+  --color-navy-light:     #DBEAFE;
+  --color-red:            #DC2626;
+  --color-red-dark:       #991B1B;
+  --color-red-light:      #FEE2E2;
   --color-code-bg:        #1A1A1A;
   --color-code-text:      #AAFFAA;
   --radius:               2px;

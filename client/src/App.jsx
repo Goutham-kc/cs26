@@ -23,7 +23,7 @@ function Shell() {
       {view === 'oaq' && <HomePage />}
       {view === 'tracker' && <TrackerPage />}
       {view === 'sp' && (
-        <div style={{ padding: '32px 24px', minHeight: 'calc(100vh - 52px)', background: '#FFF' }}>
+        <div style={{ padding: '32px 24px', minHeight: 'calc(100vh - 52px)', background: 'var(--color-bg)' }}>
           <div style={{ maxWidth: 720, margin: '0 auto' }}>
             <SPDashboard user={user} />
           </div>
