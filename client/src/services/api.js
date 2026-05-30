@@ -128,6 +128,7 @@ export const threads = {
   lock: (id) => api.patch(`/threads/${id}/lock`),
   unlock: (id) => api.patch(`/threads/${id}/unlock`),
   close: (id, spReward) => api.patch(`/threads/${id}/close`, { spReward }),
+  resolve: (id, data) => api.patch(`/threads/${id}/resolve`, data),
   assign: (id, userId) => api.patch(`/threads/${id}/assign`, { userId }),
   setPriority: (id, priority) => api.patch(`/threads/${id}/priority`, { priority }),
   delete: (id) => api.delete(`/threads/${id}`),

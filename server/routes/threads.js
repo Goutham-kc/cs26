@@ -7,9 +7,9 @@ const SPLedger = require('../models/SPLedger');
 
 const router = express.Router();
 
-async function awardSP(userId, delta, reason, event) {
+async function awardSP(userId, delta, reason, event, threadId = null) {
   await User.findByIdAndUpdate(userId, { $inc: { sp: delta } });
-  await SPLedger.create({ userId, delta, reason, event });
+  await SPLedger.create({ userId, delta, reason, event, threadId });
 }
 
 async function promoteReply(thread, replyId) {
@@ -143,11 +143,37 @@ router.patch('/:id/reply/:replyId/vote', auth, async (req, res) => {
     const reply = thread.threadReplies.id(req.params.replyId);
     if (!reply) return res.status(404).json({ message: 'Reply not found' });
 
-    const inc = type === 'up' ? { upvotes: 1 } : { downvotes: 1 };
-    await Thread.updateOne(
-      { _id: thread._id, 'threadReplies._id': reply._id },
-      { $inc: inc }
-    );
+    const userId = req.user._id;
+    const alreadyUpvoted = reply.upvotedBy?.some(id => id.equals(userId));
+    const alreadyDownvoted = reply.downvotedBy?.some(id => id.equals(userId));
+
+    if (type === 'up') {
+      if (alreadyUpvoted) return res.status(400).json({ message: 'Already upvoted' });
+      if (alreadyDownvoted) {
+        await Thread.updateOne(
+          { _id: thread._id, 'threadReplies._id': reply._id },
+          { $pull: { 'threadReplies.$.downvotedBy': userId }, $inc: { 'threadReplies.$.downvotes': -1, 'threadReplies.$.upvotes': 1 }, $addToSet: { 'threadReplies.$.upvotedBy': userId } }
+        );
+      } else {
+        await Thread.updateOne(
+          { _id: thread._id, 'threadReplies._id': reply._id },
+          { $inc: { 'threadReplies.$.upvotes': 1 }, $addToSet: { 'threadReplies.$.upvotedBy': userId } }
+        );
+      }
+    } else {
+      if (alreadyDownvoted) return res.status(400).json({ message: 'Already downvoted' });
+      if (alreadyUpvoted) {
+        await Thread.updateOne(
+          { _id: thread._id, 'threadReplies._id': reply._id },
+          { $pull: { 'threadReplies.$.upvotedBy': userId }, $inc: { 'threadReplies.$.upvotes': -1, 'threadReplies.$.downvotes': 1 }, $addToSet: { 'threadReplies.$.downvotedBy': userId } }
+        );
+      } else {
+        await Thread.updateOne(
+          { _id: thread._id, 'threadReplies._id': reply._id },
+          { $inc: { 'threadReplies.$.downvotes': 1 }, $addToSet: { 'threadReplies.$.downvotedBy': userId } }
+        );
+      }
+    }
 
     const updatedThread = await Thread.findById(req.params.id);
     const updatedReply = updatedThread.threadReplies.id(req.params.replyId);
@@ -185,16 +211,56 @@ router.patch('/:id/reply/:replyId/accept', auth, async (req, res) => {
   }
 });
 
+router.patch('/:id/resolve', auth, requireRole('admin', 'superadmin'), async (req, res) => {
+  const io = req.app.get('io');
+  try {
+    const { spReward, rewardUserId } = req.body;
+    const thread = await Thread.findById(req.params.id);
+    if (!thread) return res.status(404).json({ message: 'Thread not found' });
+
+    await Thread.findByIdAndUpdate(
+      req.params.id,
+      { status: 'Resolved', resolvedBy: req.user._id },
+      { new: true }
+    );
+
+    if (spReward && rewardUserId) {
+      await awardSP(rewardUserId, spReward, `Thread resolved: "${thread.title.slice(0, 60)}"`, 'THREAD_RESOLVE', thread._id);
+    }
+
+    const updatedThread = await Thread.findById(req.params.id).populate('raisedBy', 'name role').populate('resolvedBy', 'name role');
+    if (io) io.emit('thread:resolved', { threadId: thread._id, title: thread.title });
+
+    res.json({
+      code: 'RESOLVED',
+      message: 'Thread marked as resolved',
+      thread: updatedThread,
+      awarded: spReward && rewardUserId ? { userId: rewardUserId, sp: spReward } : null
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 router.patch('/:id/upvote', auth, async (req, res) => {
   const io = req.app.get('io');
   try {
-    const thread = await Thread.findByIdAndUpdate(
+    const thread = await Thread.findById(req.params.id);
+    if (!thread) return res.status(404).json({ message: 'Thread not found' });
+
+    const userId = req.user._id;
+    const alreadyUpvoted = thread.upvotedBy?.some(id => id.equals(userId));
+
+    if (alreadyUpvoted) return res.status(400).json({ message: 'Already upvoted' });
+
+    await Thread.findByIdAndUpdate(
       req.params.id,
-      { $inc: { upvoteCount: 1 } },
-      { new: true }
+      { $inc: { upvoteCount: 1 }, $addToSet: { upvotedBy: userId } }
     );
-    if (io) io.emit('thread:upvoted', { threadId: thread._id, upvoteCount: thread.upvoteCount });
-    res.json(thread);
+
+    const updatedThread = await Thread.findById(req.params.id).populate('raisedBy', 'name role');
+    if (io) io.emit('thread:upvoted', { threadId: thread._id, upvoteCount: updatedThread.upvoteCount });
+    res.json(updatedThread);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -215,7 +281,8 @@ router.patch('/:id/close', auth, requireRole('mentor', 'admin', 'superadmin'), a
         rewardUserId,
         spReward,
         `Thread closed: "${thread.title.slice(0, 60)}"`,
-        'THREAD_CLOSE'
+        'THREAD_CLOSE',
+        thread._id
       );
     }
 

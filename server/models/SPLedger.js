@@ -9,9 +9,9 @@ const SPLedgerSchema = new Schema({
   reason:  { type: String,   required: true },
   issueId: { type: ObjectId, ref: 'OAQIssue', default: null },
   threadId:{ type: ObjectId, ref: 'Thread',   default: null },
-  event:   {
+event: {
     type: String,
-    enum: ['FCFS_WIN', 'PENALTY', 'QUERY_BONUS', 'ESCALATION_BONUS', 'THREAD_CREATE', 'THREAD_REPLY', 'THREAD_RESOLVE'],
+    enum: ['FCFS_WIN', 'PENALTY', 'QUERY_BONUS', 'ESCALATION_BONUS', 'THREAD_CREATE', 'THREAD_REPLY', 'THREAD_RESOLVE', 'THREAD_CLOSE'],
     required: true
   }
 }, { timestamps: true });
