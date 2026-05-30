@@ -1,167 +1,142 @@
 # OAQ System — Vicharanashala
 **Once Asked Questions** · MERN Stack · v2.0
 
-> SP & Wallet system excluded (already implemented separately)
+Every query the team answers once becomes a permanent asset. Subsequent interns get that answer in under three seconds without human involvement.
 
 ---
 
-## Quick Start
+## Design Philosophy & Theme
+- **Strict Monochrome**: Sleek, premium dark/light mode styled entirely with CSS custom properties (variables) under WCAG AA compliance.
+- **Micro-animations**: Enhanced transition states, real-time Socket.io state synchronization, and audio voice playback (en-IN accent adapter pattern).
+
+---
+
+## Quick Start (Unified Flow)
 
 ### Prerequisites
-- Node.js 20 LTS
-- MongoDB 7 running locally (or Atlas URI)
+- **Node.js 20 LTS** or higher
+- **MongoDB 7** running locally or via Atlas connection URI
 
----
-
-### 1. Backend Setup
-
-```bash
-cd backend
-cp .env.example .env
-# Edit .env — set MONGO_URI and JWT_SECRET
-
-npm install
-npm run seed      # Seeds 13 baseline sections + FAQ entries + demo users
-npm run dev       # Starts on http://localhost:5000
-```
-
-**Demo accounts seeded:**
-| Email | Password | Role |
-|---|---|---|
-| intern@demo.com | demo1234 | intern |
-| mentor@demo.com | demo1234 | mentor |
-
----
-
-### 2. Frontend Setup
+### Setup & Startup
+Initialize the entire project with a single command from the root directory:
 
 ```bash
-cd frontend
-npm install
-npm run dev       # Starts on http://localhost:5173
+# 1. Install all dependencies for both client and server
+npm run install:all
+
+# 2. Seed baseline sections, FAQ entries, and superadmin/mentor/intern accounts
+npm run seed
+
+# 3. Spin up both backend (port 5000) and frontend (port 5173) concurrently
+npm run dev
 ```
+
+**Demo accounts seeded by default:**
+| Email | Password | Role | Access Level |
+|---|---|---|---|
+| superadmin@demo.com | demo1234 | superadmin | Complete moderation, adjustments, creation |
+| admin@demo.com | demo1234 | admin | Seed baseline, adjust user SP, add sections |
+| mentor@demo.com | demo1234 | mentor | Flag queries, promote answers, sign off resolution |
+| intern@demo.com | demo1234 | intern | Raise queries, upvote, submit FCFS answers |
 
 ---
 
-## Architecture
+## Directory Architecture
 
 ```
 oaq-system/
-├── backend/
-│   ├── config/db.js              # MongoDB connection
-│   ├── models/
-│   │   ├── OAQIssue.js           # Core tracker model + text indexes
-│   │   ├── User.js               # Auth (no SP — use your existing system)
-│   │   ├── Section.js            # 13 baseline + dynamic sections
-│   │   └── CoOccurrence.js       # Recommendation co-occurrence graph
-│   ├── routes/
-│   │   ├── auth.js               # Register / Login → JWT
-│   │   ├── oaq.js                # All OAQ routes (see below)
-│   │   └── sections.js           # Section registry CRUD
-│   ├── services/
-│   │   ├── yaksha.js             # Yaksha-mini audit engine (v1 stub)
-│   │   └── escalation.js        # Event-driven auto-escalation
-│   ├── middleware/auth.js        # JWT guard + role check
-│   ├── scripts/seed.js           # DB seeder
-│   └── server.js                 # Express + Socket.io entrypoint
+├── package.json                  # Root configurations and unified startup scripts
 │
-└── frontend/
+├── server/                       # Express + MongoDB backend
+│   ├── config/db.js              # MongoDB database connection
+│   ├── models/
+│   │   ├── OAQIssue.js           # Core tracker + Full-text search index
+│   │   ├── User.js               # Auth schema + role registry
+│   │   ├── Section.js            # 13 locked and dynamic sections
+│   │   └── CoOccurrence.js       # Collaborative recommendation graph
+│   ├── routes/
+│   │   ├── auth.js               # User registration, login, and superadmin creation
+│   │   ├── oaq.js                # Search, upvoting, resolving, and flagging
+│   │   ├── sections.js           # Sections management
+│   │   └── admin.js              # Stats overview, user adjustment, and activity logs
+│   ├── services/
+│   │   ├── yaksha.js             # Yaksha-mini atomic code auditor stub
+│   │   └── escalation.js         # Event-driven priority escalation trigger
+│   ├── middleware/auth.js        # JWT gatekeeper and role-based guards
+│   ├── scripts/seed.js           # Baseline database seeder
+│   └── server.js                 # Express + Socket.io gateway endpoint
+│
+└── client/                       # React frontend
     └── src/
         ├── context/
-        │   ├── AuthContext.jsx    # JWT auth state
-        │   ├── SocketContext.jsx  # Socket.io connection
-        │   └── ToastContext.jsx   # Toast notifications
+        │   ├── AuthContext.jsx   # JWT state management
+        │   ├── SocketContext.jsx # Real-time Socket.io pub/sub provider
+        │   ├── ToastContext.jsx  # Notification stack alerts
+        │   └── ThemeContext.jsx  # Light/Dark mode dynamic variable provider
         ├── services/
-        │   ├── api.js             # Fetch wrapper
-        │   └── audioController.js # Web Speech API (en-IN)
+        │   ├── api.js            # Unified API fetch interface with interceptors
+        │   └── audioController.js# Adaptation layer for en-IN Voice Synthesis
         ├── components/
-        │   ├── Topbar.jsx
-        │   ├── BaselineOAQ.jsx    # 13 locked FAQ accordions
-        │   ├── TrendingFeed.jsx   # RSS Top-15 (auto-refresh 5min)
-        │   ├── SectionFilter.jsx  # Multi-select predicate pushdown
-        │   ├── AccordionDrawer.jsx # Voice + upvote + rec rail
-        │   ├── RecommendationRail.jsx # People Also Asked
-        │   ├── YakshaViewport.jsx # Audit status display
-        │   ├── RaiseQueryModal.jsx
-        │   └── ResolveModal.jsx   # FCFS submission + Yaksha preview
+        │   ├── Topbar.jsx        # Navigation + Dark Mode Toggle + role-based gates
+        │   ├── LoginForm.jsx     # Contrasted and responsive credentials form
+        │   ├── SPDashboard.jsx   # Ledger statements, top 50, and wallet charts
+        │   ├── BaselineOAQ.jsx   # 13 locked static baseline FAQs accordions
+        │   ├── TrendingFeed.jsx  # Top-15 query RSS feed with 5min auto-refresh
+        │   ├── SectionFilter.jsx # Multi-select category predicate filters
+        │   ├── AccordionDrawer.jsx# Inline drawers, upvotes, and recommendation rails
+        │   └── RecommendationRail.jsx# Collaborative search results (People Also Asked)
         └── pages/
-            ├── HomePage.jsx       # Search + baseline + trending
-            ├── TrackerPage.jsx    # FCFS tracker table
-            └── AuthPage.jsx
+            ├── HomePage.jsx      # OAQ main portal
+            ├── TrackerPage.jsx   # Active FCFS board table
+            └── AdminPage.jsx     # Moderation queues, stats, and SP adjustment
 ```
 
 ---
 
-## API Routes
+## API Routes Documentation
 
-| Method | Route | Auth | Description |
-|---|---|---|---|
-| GET | /api/oaq/baseline | — | 13 locked baseline FAQs |
-| GET | /api/oaq/trending | — | Top-15 by upvote (RSS feed) |
-| GET | /api/oaq/search?q=&sections= | — | Full-text search + section filter |
-| GET | /api/oaq/tracker | — | All non-baseline issues |
-| GET | /api/oaq/:id/related | — | Recommendation rail (co-occurrence) |
-| POST | /api/oaq | intern | Raise new query |
-| POST | /api/oaq/issues/:id/resolve | intern | FCFS atomic resolve |
-| POST | /api/oaq/issues/:id/reply | intern | Community reply |
-| POST | /api/oaq/:id/view | intern | Record co-occurrence |
-| PATCH | /api/oaq/issues/:id/upvote | intern | Upvote (triggers escalation check) |
-| PATCH | /api/oaq/issues/:id/mentor-signoff | mentor/admin | Sign off resolution |
-| GET | /api/sections | — | All sections for filter bar |
-| POST | /api/sections | admin | Add new section |
-| POST | /api/auth/register | — | Register |
-| POST | /api/auth/login | — | Login → JWT |
+### 1. Authentication (`/api/auth`)
+- `POST /api/auth/register` - Create a new intern/mentor/admin account.
+- `POST /api/auth/login` - Authenticate user credentials and return a signed JWT token.
 
----
+### 2. Once Asked Questions (`/api/oaq`)
+- `GET /api/oaq/baseline` - Fetch the 13 locked baseline FAQs.
+- `GET /api/oaq/trending` - Retrieve top 15 trending queries sorted by upvote frequency.
+- `GET /api/oaq/search?q=&sections=` - Full-text search with pushdown category filtering.
+- `GET /api/oaq/tracker` - View all community-contributed tracker queries.
+- `GET /api/oaq/:id/related` - Collaborative filtering "People Also Asked" recommendation.
+- `POST /api/oaq` - Raise a new query (+10 SP).
+- `POST /api/oaq/issues/:id/resolve` - Submit atomic FCFS query resolution (+50 SP, audited by Yaksha).
+- `POST /api/oaq/issues/:id/reply` - Submit a community answer reply.
+- `POST /api/oaq/:id/view` - Record an issue view to update the co-occurrence index.
+- `PATCH /api/oaq/issues/:id/upvote` - Upvote a query (potentially triggers priority escalation).
+- `PATCH /api/oaq/issues/:id/mentor-signoff` - Mentor approval signature for resolutions.
 
-## Integrating Your SP/Wallet System
+### 3. Section Categories (`/api/sections`)
+- `GET /api/sections` - Retrieve all category sections.
+- `POST /api/sections` - Create a new dynamic category section (Admin/Superadmin only).
 
-The OAQ routes intentionally omit SP minting. To wire in your existing system:
-
-1. **FCFS Win** — In `routes/oaq.js`, find the `POST /issues/:id/resolve` handler.
-   After the `findOneAndUpdate` succeeds, call your SP mint function:
-   ```js
-   // Your SP system call here
-   await yourSPService.mint(req.user._id, 50, 'FCFS_WIN', issue._id);
-   ```
-
-2. **Yaksha Penalty** — In the same route, after `YAKSHA_REJECT`:
-   ```js
-   await yourSPService.deduct(req.user._id, 20, 'YAKSHA_PENALTY', req.params.id);
-   ```
-
-3. **Escalation Bonus** — In `services/escalation.js`, after priority update:
-   ```js
-   await yourSPService.mint(issue.raisedBy, 5, 'ESCALATION_BONUS', issue._id);
-   ```
-
-4. **Query Bonus** — In `routes/oaq.js`, `POST /oaq` (raise query):
-   ```js
-   await yourSPService.mint(req.user._id, 10, 'QUERY_BONUS', issue._id);
-   ```
+### 4. Admin & Moderation Operations (`/api/admin`)
+- `GET /api/admin/stats` - Fetch overall metrics (total issues, top holders, activity log).
+- `GET /api/admin/issues` - Paginated admin queries list with Pin/Feature/Delete triggers.
+- `GET /api/admin/users` - List all system accounts.
+- `POST /api/admin/users` - Direct creation of system accounts (Superadmin only).
+- `PATCH /api/admin/users/:id` - Adjust SP bank ledger balances or roles (Superadmin only).
 
 ---
 
-## Features Implemented
+## Dynamic Theme Design System
+Our client features custom CSS variable injection mapping dynamically across Light and Dark states:
 
-| Feature | CS Concept | Status |
-|---|---|---|
-| 13 Locked Baseline OAQ | Hash map + text index | ✓ Active |
-| Inline Accordion Drawers | Stateful toggle | ✓ Active |
-| FCFS Atomic Resolution | Optimistic concurrency control | ✓ Active |
-| Yaksha-mini Audit Engine | Content classifier stub | ✓ Active |
-| RSS Top-15 Trending Feed | Frequency-sorted priority queue | ✓ Active |
-| Section Filter (13 + dynamic) | Predicate pushdown | ✓ Active |
-| Recommendation Rail | Item-based collaborative filtering | ✓ Active |
-| Auto-Escalation | Event-driven threshold trigger | ✓ Active |
-| Voice Playback (en-IN) | Web Speech API | ✓ Active |
-| Socket.io Real-time | Pub/sub events | ✓ Active |
-| Translation Layer | Adapter pattern | Placeholder |
-| SP / Wallet | (Your system) | Excluded |
-
----
-
-## Design System
-Strict monochrome — black, white, greys only. WCAG AA contrast.
-Zero external CSS libraries — plain CSS with BEM conventions.
-Font stack: Inter (UI) + JetBrains Mono (code/meta).
+```css
+/* Tokens declared dynamically under ThemeContext */
+--color-bg             /* Core workspace background */
+--color-surface        /* Card & table cells background */
+--color-surface-hover  /* Alternating row and button highlights */
+--color-border         /* Layout dividing lines */
+--color-text-primary   /* Headings and body readable contrast */
+--color-text-secondary /* Detail and descriptive paragraphs */
+--color-text-muted     /* Timestamps and indices placeholders */
+--color-invert-bg      /* Dynamic inversion for prominent buttons */
+--color-invert-text    /* High-contrast text on inverted backgrounds */
+```
