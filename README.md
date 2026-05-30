@@ -1,228 +1,142 @@
 # OAQ & Threads System — Vicharanashala
 **Once Asked Questions · Threaded discussions · SP & Wallet System · MERN Stack · v2.0**
 
-A premium, state-of-the-art Knowledge sharing and Query Tracking portal built with high visual standards (sleek Monochrome Light / Blurple Dark theme) featuring automated content audits, gamified Skill Points (SP) allocation, real-time Socket.io pub/sub, and collaborative nested threads.
+Every query the team answers once becomes a permanent asset. Subsequent interns get that answer in under three seconds without human involvement.
 
 ---
 
-## Quick Start
+## Design Philosophy & Theme
+- **Strict Monochrome**: Sleek, premium dark/light mode styled entirely with CSS custom properties (variables) under WCAG AA compliance.
+- **Micro-animations**: Enhanced transition states, real-time Socket.io state synchronization, and audio voice playback (en-IN accent adapter pattern).
+
+---
+
+## Quick Start (Unified Flow)
 
 ### Prerequisites
-- **Node.js**: 20 LTS or later
-- **MongoDB**: 7.x or later running locally (or MongoDB Atlas URI)
+- **Node.js 20 LTS** or higher
+- **MongoDB 7** running locally or via Atlas connection URI
 
-### Setup & Installation
-The project features a root-level task manager for simple, unified concurrent execution.
+### Setup & Startup
+Initialize the entire project with a single command from the root directory:
 
-1. **Install Root and Workspace Dependencies:**
-   ```bash
-   npm install
-   npm run install:all
-   ```
-   *This triggers high-speed installation in both `server/` and `client/` subfolders.*
+```bash
+# 1. Install all dependencies for both client and server
+npm run install:all
 
-2. **Configure Environment Variables:**
-   Create a `.env` file inside the `server/` directory:
-   ```bash
-   cd server
-   cp .env.example .env
-   # Open .env and specify your PORT, MONGO_URI, and JWT_SECRET
-   ```
+# 2. Seed baseline sections, FAQ entries, and superadmin/mentor/intern accounts
+npm run seed
 
-3. **Initialize the Server Data:**
-   *First-time database records and administrative roles are prepared via standard MERN schemas.*
+# 3. Spin up both backend (port 5000) and frontend (port 5173) concurrently
+npm run dev
+```
 
-4. **Launch the Application Concurrently:**
-   From the root repository directory:
-   ```bash
-   npm run dev
-   ```
-   *Starts the Node/Express backend on `http://localhost:5000` and the modern Vite client on `http://localhost:5173` concurrently.*
+**Demo accounts seeded by default:**
+| Email | Password | Role | Access Level |
+|---|---|---|---|
+| superadmin@demo.com | demo1234 | superadmin | Complete moderation, adjustments, creation |
+| admin@demo.com | demo1234 | admin | Seed baseline, adjust user SP, add sections |
+| mentor@demo.com | demo1234 | mentor | Flag queries, promote answers, sign off resolution |
+| intern@demo.com | demo1234 | intern | Raise queries, upvote, submit FCFS answers |
 
 ---
 
 ## Directory Architecture
 
 ```
-cs26/ (root)
-├── package.json               # Concurrently setup & workspace script runner
-├── server/                    # Express + Node.js API server
-│   ├── index.js               # Entrypoint & Socket.io integration
-│   ├── models/
-│   │   ├── User.js            # Unified authentication, credentials, and SP counters
-│   │   ├── OAQIssue.js        # Core query tracker & FCFS answer model
-│   │   ├── Thread.js          # Nested forum conversations model
-│   │   ├── SPLedger.js        # Audit ledger of all SP transactions
-│   │   ├── Section.js         # Dynamic baseline category metadata
-│   │   └── CoOccurrence.js    # Collaboration/Recommendation matrix
-│   ├── routes/
-│   │   ├── auth.js            # Register / login router (JWT generation)
-│   │   ├── oaq.js             # FCFS tracker, upvoting, and Auto-Escalation
-│   │   ├── threads.js         # Hybrid issue tracker + nested discussions router
-│   │   ├── sp.js              # Wallet metrics, statement ledger, and leaderboards
-│   │   ├── admin.js           # Admin CRUD, database seeding, and user control
-│   │   └── user.js            # User profile and role lookups
-│   ├── middleware/
-│   │   └── auth.js            # Role-based guards (intern, mentor, admin, superadmin)
-│   └── services/
-│       ├── yaksha.js          # Automated content quality classifier (Yaksha-mini)
-│       └── escalation.js      # Event-driven priority escalation hooks
+oaq-system/
+├── package.json                  # Root configurations and unified startup scripts
 │
-└── client/                    # Vite + React.js SPA frontend
-    ├── src/
-    │   ├── App.jsx            # Dynamic client routing and view control
-    │   ├── global.css         # Baseline monochrome styles and global animations
-    │   ├── context/
-    │   │   ├── ThemeContext.jsx   # Overwrites 28 dynamic CSS variables (Blurple Dark mode)
-    │   │   ├── AuthContext.jsx    # Session management & JWT token storage
-    │   │   ├── SocketContext.jsx  # Event listeners for real-time notifications
-    │   │   └── ToastContext.jsx   # Alert overlays
-    │   ├── services/
-    │   │   ├── api.js             # Unified Axios/Fetch API gateway wrapper
-    │   │   └── audioController.js # Indian English (en-IN) Speech synthesis controls
-    │   ├── components/
-    │   │   ├── Topbar.jsx         # Global dynamic brand bar with theme switchers
-    │   │   ├── LoginForm.jsx      # High-contrast accessible login form
-    │   │   ├── BaselineOAQ.jsx    # 13 Locked baseline categories & accordions
-    │   │   ├── TrendingFeed.jsx   # Top-15 RSS Trending Feed (5-minute polling)
-    │   │   ├── SectionFilter.jsx  # Multi-select predicate pushdown filters
-    │   │   ├── SPDashboard.jsx    # SP Statement wallet, Cohort chart, and history
-    │   │   └── OpenQueryCard.jsx  # Live FCFS card with action hooks
-    │   └── pages/
-    │       ├── HomePage.jsx       # Voice search, category selectors, and feeds
-    │       ├── TrackerPage.jsx    # Live FCFS tracker grid
-    │       ├── ThreadsPage.jsx    # Nested discussion forum & community thread portal
-    │       └── AdminPage.jsx      # Moderation queues, Section edits, and seeder buttons
+├── server/                       # Express + MongoDB backend
+│   ├── config/db.js              # MongoDB database connection
+│   ├── models/
+│   │   ├── OAQIssue.js           # Core tracker + Full-text search index
+│   │   ├── User.js               # Auth schema + role registry
+│   │   ├── Section.js            # 13 locked and dynamic sections
+│   │   └── CoOccurrence.js       # Collaborative recommendation graph
+│   ├── routes/
+│   │   ├── auth.js               # User registration, login, and superadmin creation
+│   │   ├── oaq.js                # Search, upvoting, resolving, and flagging
+│   │   ├── sections.js           # Sections management
+│   │   └── admin.js              # Stats overview, user adjustment, and activity logs
+│   ├── services/
+│   │   ├── yaksha.js             # Yaksha-mini atomic code auditor stub
+│   │   └── escalation.js         # Event-driven priority escalation trigger
+│   ├── middleware/auth.js        # JWT gatekeeper and role-based guards
+│   ├── scripts/seed.js           # Baseline database seeder
+│   └── server.js                 # Express + Socket.io gateway endpoint
+│
+└── client/                       # React frontend
+    └── src/
+        ├── context/
+        │   ├── AuthContext.jsx   # JWT state management
+        │   ├── SocketContext.jsx # Real-time Socket.io pub/sub provider
+        │   ├── ToastContext.jsx  # Notification stack alerts
+        │   └── ThemeContext.jsx  # Light/Dark mode dynamic variable provider
+        ├── services/
+        │   ├── api.js            # Unified API fetch interface with interceptors
+        │   └── audioController.js# Adaptation layer for en-IN Voice Synthesis
+        ├── components/
+        │   ├── Topbar.jsx        # Navigation + Dark Mode Toggle + role-based gates
+        │   ├── LoginForm.jsx     # Contrasted and responsive credentials form
+        │   ├── SPDashboard.jsx   # Ledger statements, top 50, and wallet charts
+        │   ├── BaselineOAQ.jsx   # 13 locked static baseline FAQs accordions
+        │   ├── TrendingFeed.jsx  # Top-15 query RSS feed with 5min auto-refresh
+        │   ├── SectionFilter.jsx # Multi-select category predicate filters
+        │   ├── AccordionDrawer.jsx# Inline drawers, upvotes, and recommendation rails
+        │   └── RecommendationRail.jsx# Collaborative search results (People Also Asked)
+        └── pages/
+            ├── HomePage.jsx      # OAQ main portal
+            ├── TrackerPage.jsx   # Active FCFS board table
+            └── AdminPage.jsx     # Moderation queues, stats, and SP adjustment
 ```
 
 ---
 
-## API Routes & Endpoints Reference
+## API Routes Documentation
 
-### 🔐 Authentication (`/api/auth`)
-| Method | Endpoint | Auth | Description |
-|---|---|---|---|
-| POST | `/api/auth/register` | Open | Create a new user account |
-| POST | `/api/auth/login` | Open | Authenticate user & return JWT token |
+### 1. Authentication (`/api/auth`)
+- `POST /api/auth/register` - Create a new intern/mentor/admin account.
+- `POST /api/auth/login` - Authenticate user credentials and return a signed JWT token.
 
-### 👤 User Information (`/api/user`)
-| Method | Endpoint | Auth | Description |
-|---|---|---|---|
-| GET | `/api/user/me` | Logged In | Get profile details of the active session user |
-| GET | `/api/user/:id/stats` | Logged In | Retrieve SP metrics & ledger counters for a user |
+### 2. Once Asked Questions (`/api/oaq`)
+- `GET /api/oaq/baseline` - Fetch the 13 locked baseline FAQs.
+- `GET /api/oaq/trending` - Retrieve top 15 trending queries sorted by upvote frequency.
+- `GET /api/oaq/search?q=&sections=` - Full-text search with pushdown category filtering.
+- `GET /api/oaq/tracker` - View all community-contributed tracker queries.
+- `GET /api/oaq/:id/related` - Collaborative filtering "People Also Asked" recommendation.
+- `POST /api/oaq` - Raise a new query (+10 SP).
+- `POST /api/oaq/issues/:id/resolve` - Submit atomic FCFS query resolution (+50 SP, audited by Yaksha).
+- `POST /api/oaq/issues/:id/reply` - Submit a community answer reply.
+- `POST /api/oaq/:id/view` - Record an issue view to update the co-occurrence index.
+- `PATCH /api/oaq/issues/:id/upvote` - Upvote a query (potentially triggers priority escalation).
+- `PATCH /api/oaq/issues/:id/mentor-signoff` - Mentor approval signature for resolutions.
 
-### 📋 OAQ & FCFS Tracker (`/api/oaq`)
-| Method | Endpoint | Auth | Description |
-|---|---|---|---|
-| GET | `/api/oaq/baseline` | Open | Fetch the 13 locked onboarding baseline FAQs |
-| GET | `/api/oaq/trending` | Open | Fetch top 15 resolved issues (frequency-sorted RSS feed) |
-| GET | `/api/oaq/search` | Open | Search queries using text-index weightings with category filters |
-| GET | `/api/oaq/open-queries` | Open | Fetch unresolved queries having community replies |
-| GET | `/api/oaq/tracker` | Open | Retrieve non-baseline tracking issues sorted by priority |
-| GET | `/api/oaq/:id` | Open | Retrieve full issue details with populated participant records |
-| GET | `/api/oaq/:id/related` | Open | Get related issues from recommendation rail (co-occurrence) |
-| POST | `/api/oaq` | Intern+ | Submit a new query (+10 SP query bonus) |
-| POST | `/api/oaq/:id/view` | Intern+ | Log issue views to build the collaborative filtering matrix |
-| POST | `/api/oaq/mock-import` | Admin | Bulk-import resolved query arrays (avoids text duplicates) |
-| POST | `/api/oaq/seed-baseline` | Superadmin | Flushes and seeds all 13 standard category records |
-| POST | `/api/oaq/issues/:id/resolve` | Intern+ | Submit answer (Yaksha audit → active upvote resolution) |
-| POST | `/api/oaq/issues/:id/reply` | Intern+ | Reply to an issue that is already marked as Resolved |
-| POST | `/api/oaq/issues/:id/community-reply` | Intern+ | Post a community response on an open tracker query |
-| PATCH | `/api/oaq/issues/:id/upvote` | Intern+ | Upvote issue (triggers automatic priority-escalation checks) |
-| PATCH | `/api/oaq/issues/:id/replies/:replyId/vote` | Intern+ | Upvote or downvote community replies (3 upvotes auto-promotes) |
-| PATCH | `/api/oaq/issues/:id/replies/:replyId/flag` | Mentor+ | Flag a low-quality reply for moderation |
-| PATCH | `/api/oaq/issues/:id/replies/:replyId/promote` | Mentor+ | Manually promote an intern's reply to the master answer (+50 SP) |
-| PATCH | `/api/oaq/issues/:id/mentor-signoff` | Mentor+ | Approve resolution and sign off the issue |
-| GET | `/api/oaq/moderation-queue` | Mentor+ | Retrieve flagged, downvoted, and unanswered issues |
+### 3. Section Categories (`/api/sections`)
+- `GET /api/sections` - Retrieve all category sections.
+- `POST /api/sections` - Create a new dynamic category section (Admin/Superadmin only).
 
-### 💬 Threaded Conversations (`/api/threads`)
-*Supports collaborative nested replies, pinned threads, and voting.*
-| Method | Endpoint | Auth | Description |
-|---|---|---|---|
-| GET | `/api/threads` | Open | List, search, and filter forum threads (category, label, search) |
-| GET | `/api/threads/:id` | Open | Retrieve single thread with nested parent-child replies |
-| POST | `/api/threads` | Intern+ | Raise a new forum conversation thread |
-| POST | `/api/threads/:id/reply` | Intern+ | Submit reply (supports parentReplyId nested threading) |
-| PATCH | `/api/threads/:id/reply/:replyId/vote` | Intern+ | Vote up/down on reply (3 upvotes triggers auto-promote) |
-| PATCH | `/api/threads/:id/reply/:replyId/accept` | Intern+ | Owner/Mentor accepts specific reply as the best answer |
-| PATCH | `/api/threads/:id/upvote` | Intern+ | Upvote a thread |
-| PATCH | `/api/threads/:id/close` | Mentor+ | Close thread and optionally reward best replier with custom SP |
-| PATCH | `/api/threads/:id/lock` | Mentor+ | Restrict comments/replies on a thread |
-| PATCH | `/api/threads/:id/unlock` | Mentor+ | Unlock comments/replies on a locked thread |
-| PATCH | `/api/threads/:id/assign` | Mentor+ | Assign the thread to a specific Mentor/Admin |
-| PATCH | `/api/threads/:id/priority` | Mentor+ | Toggle thread priority status between NORMAL and HIGH |
-| DELETE | `/api/threads/:id` | Admin+ | Delete thread permanently from the database |
-
-### 🪙 Gamified Wallet & SP (`/api/sp`)
-*Fully active transaction tracking with automated seeder rules.*
-| Method | Endpoint | Auth | Description |
-|---|---|---|---|
-| GET | `/api/sp/wallet` | Intern+ | Retrieve active SP balances, dynamic badges, and trend history |
-| GET | `/api/sp/ledger` | Intern+ | Paginated history of all delta statements (credits and penalties) |
-| GET | `/api/sp/leaderboard` | Intern+ | Top-ranked cohort members annotated with FCFS wins |
-
-### 🛡️ Admin Controls (`/api/admin`)
-*Dashboard controls, moderation grids, and dynamic records CRUD.*
-| Method | Endpoint | Auth | Description |
-|---|---|---|---|
-| GET | `/api/admin/stats` | Admin+ | Retrieve aggregate metrics (Total users, issues, pins, leader) |
-| GET | `/api/admin/issues` | Admin+ | Fetch paginated tracking list of all system issues |
-| GET | `/api/admin/issues/:id` | Admin+ | Load target issue for moderation audit |
-| POST | `/api/admin/issues` | Admin+ | Manually insert a verified, fully-resolved issue |
-| PATCH | `/api/admin/issues/:id` | Admin+ | Update query text, answer text, priority, or category |
-| PATCH | `/api/admin/issues/:id/pin` | Admin+ | Toggle issue pinning (shows at top of home view) |
-| PATCH | `/api/admin/issues/:id/feature` | Admin+ | Toggle issue featured flag (highlights in trending) |
-| PATCH | `/api/admin/issues/:id/resolve` | Admin+ | Manually resolve an open issue |
-| DELETE | `/api/admin/issues/:id` | Admin+ | Delete issue permanently from the database |
-| GET | `/api/admin/users` | Admin+ | Searchable list of all cohort users with role filtering |
-| PATCH | `/api/admin/users/:id` | Admin+ | Adjust user profile details, role settings, or SP balance |
-| POST | `/api/admin/users` | Admin+ | Provision a new user account (intern, mentor, admin, superadmin) |
-| GET | `/api/admin/users/:id/sp-history` | Admin+ | View complete audit ledger for a specific target user |
-| GET | `/api/admin/sections` | Admin+ | List all active dynamic category sections |
-| POST | `/api/admin/sections` | Admin+ | Add and register a new dynamic category section |
-
-### 📂 Dynamic Sections (`/api/sections`)
-| Method | Endpoint | Auth | Description |
-|---|---|---|---|
-| GET | `/api/sections` | Open | Retrieve all categories and baseline sections for filter bar |
-| POST | `/api/sections` | Admin+ | Register a new dynamic section category |
+### 4. Admin & Moderation Operations (`/api/admin`)
+- `GET /api/admin/stats` - Fetch overall metrics (total issues, top holders, activity log).
+- `GET /api/admin/issues` - Paginated admin queries list with Pin/Feature/Delete triggers.
+- `GET /api/admin/users` - List all system accounts.
+- `POST /api/admin/users` - Direct creation of system accounts (Superadmin only).
+- `PATCH /api/admin/users/:id` - Adjust SP bank ledger balances or roles (Superadmin only).
 
 ---
 
-## Gamification & Audit Rules
+## Dynamic Theme Design System
+Our client features custom CSS variable injection mapping dynamically across Light and Dark states:
 
-### Skill Point (SP) Delta Operations
-* **FCFS Win**: `+50 SP` awarded when an intern submits a reply that is accepted or upvoted 3+ times.
-* **Query Bonus**: `+10 SP` awarded for submitting a unique query on the portal.
-* **Escalation Bonus**: `+5 SP` awarded to the query author if their query gains 5+ upvotes within 2 hours.
-* **Yaksha Penalty**: `-20 SP` deducted if a submission fails automated quality reviews.
-
-### Yaksha-mini Content Quality Auditor
-A strict content checker enforces professionalism during replies:
-1. **Length**: Enforces a minimum of 20 characters.
-2. **Word Count**: Enforces a minimum of 3 space-separated words.
-3. **Gibberish Checks**: Rejects repetitive letters (e.g. `aaaaaa`) and simple digit strings.
-4. **Relevance Ratio**: Enforces a minimum dictionary density threshold of 40%.
-
----
-
-## Design System & Theme Specs
-
-### ☀️ Monochrome Light Mode
-A strict, premium, high-contrast monochrome layout matching WCAG AA color rules:
-- **Body Background**: `#FFFFFF`
-- **Surface Panels**: `#F2F2F2` / Hover: `#E8E8E8`
-- **Text Color**: `#111111` / Secondary: `#6B7280`
-- **Borders**: `#E5E7EB`
-
-### 🌙 Blurple Dark Mode
-A vibrant, custom Dark Mode with Blurple highlights resembling modern development tools:
-- **Body Background**: `#313338` (Primary dark background)
-- **Container Alt Background**: `#1e1f22` (Darker alt background)
-- **Surface Panels**: `#2b2d31` / Hover: `#35373c`
-- **Active Accents**: `#5865f2` (Blurple)
-- **Primary Text**: `#f2f3f5` / Secondary: `#b5bac1`
-- **Borders**: `#3c3f46` / Strong Borders: `#4a4d55`
-- **Teal Statuses**: `#23a55a` (Theme Green)
-- **Red Alerts**: `#f23f43` (Theme Red)
-- **Amber Highlights**: `#f0b232` (Theme Amber)
+```css
+/* Tokens declared dynamically under ThemeContext */
+--color-bg             /* Core workspace background */
+--color-surface        /* Card & table cells background */
+--color-surface-hover  /* Alternating row and button highlights */
+--color-border         /* Layout dividing lines */
+--color-text-primary   /* Headings and body readable contrast */
+--color-text-secondary /* Detail and descriptive paragraphs */
+--color-text-muted     /* Timestamps and indices placeholders */
+--color-invert-bg      /* Dynamic inversion for prominent buttons */
+--color-invert-text    /* High-contrast text on inverted backgrounds */
+```
