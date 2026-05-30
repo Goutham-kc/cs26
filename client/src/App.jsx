@@ -4,6 +4,7 @@ import LoginForm from './components/LoginForm';
 import Topbar from './components/Topbar';
 import HomePage from './pages/HomePage';
 import TrackerPage from './pages/TrackerPage';
+import ThreadsPage from './pages/ThreadsPage';
 import AdminPage from './pages/AdminPage';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
@@ -21,9 +22,10 @@ function Shell() {
     <>
       <Topbar view={view} onViewChange={setView} />
       {view === 'oaq' && <HomePage />}
+      {view === 'threads' && <ThreadsPage />}
       {view === 'tracker' && <TrackerPage />}
       {view === 'sp' && (
-        <div style={{ padding: '32px 24px', minHeight: 'calc(100vh - 52px)', background: '#FFF' }}>
+        <div style={{ padding: '32px 24px', minHeight: 'calc(100vh - 52px)', background: 'var(--color-bg)' }}>
           <div style={{ maxWidth: 720, margin: '0 auto' }}>
             <SPDashboard user={user} />
           </div>

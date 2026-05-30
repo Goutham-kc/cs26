@@ -4,20 +4,21 @@ import { useSocket } from '../hooks/useSocket';
 
 // ── Monochrome design tokens (spec §12) ──────────────────────────────────────
 const T = {
-  bg:         '#FFFFFF',
-  surface:    '#F2F2F2',
-  border:     '#E5E5E5',
-  primary:    '#111111',
-  secondary:  '#444444',
-  muted:      '#888888',
-  invBg:      '#000000',
-  invText:    '#FFFFFF',
-  red:        '#DC2626',
-  teal:       '#0D9488',
-  tealDark:   '#0F766E',
-  tealLight:  '#CCFBF1',
-  navyDark:   '#1E3A5F',
-  navyLight:  '#DBEAFE',
+  bg:         'var(--color-bg, #FFFFFF)',
+  surface:    'var(--color-surface, #F2F2F2)',
+  surfaceHover: 'var(--color-surface-hover, #E8E8E8)',
+  border:     'var(--color-border, #E5E5E5)',
+  primary:    'var(--color-text-primary, #111111)',
+  secondary:  'var(--color-text-secondary, #444444)',
+  muted:      'var(--color-text-muted, #888888)',
+  invBg:      'var(--color-inv-bg, #000000)',
+  invText:    'var(--color-inv-text, #FFFFFF)',
+  red:        'var(--color-red, #DC2626)',
+  teal:       'var(--color-teal, #0D9488)',
+  tealDark:   'var(--color-teal-dark, #0F766E)',
+  tealLight:  'var(--color-teal-light, #CCFBF1)',
+  navyDark:   'var(--color-navy-dark, #1E3A5F)',
+  navyLight:  'var(--color-navy-light, #DBEAFE)',
   radius:     '4px',
   mono:       "'JetBrains Mono', 'Courier New', monospace",
 };
@@ -25,7 +26,7 @@ const T = {
 const EVENT_META = {
   FCFS_WIN:         { label: 'FCFS WIN',    bg: T.invBg,  color: T.invText },
   QUERY_BONUS:      { label: 'QUERY',       bg: T.surface,color: T.primary },
-  ESCALATION_BONUS: { label: 'ESCALATION',  bg: '#E0E0E0',color: T.primary },
+  ESCALATION_BONUS: { label: 'ESCALATION',  bg: 'var(--color-surface-hover, #E0E0E0)',color: T.primary },
   PENALTY:          { label: 'PENALTY',     bg: T.red,    color: T.invText },
 };
 
@@ -125,9 +126,9 @@ function TrendChart({ trend }) {
       </div>
     );
   }
-  const max = Math.max(...trend.map(d => d.daily), 1);
+  const max = Math.max(...trend.map(d => Math.abs(d.daily)), 1);
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 80 }}>
+    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 80, overflow: 'hidden' }}>
       {trend.map((d, i) => {
         const h = Math.max(4, Math.abs((d.daily / max) * 80));
         const isNeg = d.daily < 0;
@@ -488,7 +489,7 @@ export default function SPDashboard({ user }) {
               <div key={entry._id || i} style={{
                 display: 'grid', gridTemplateColumns: '36px 1fr 80px 60px',
                 padding: '14px 20px', alignItems: 'center', gap: 8,
-                background: entry.isYou ? T.surface : i % 2 === 0 ? T.bg : '#FAFAFA',
+                background: entry.isYou ? T.surface : i % 2 === 0 ? T.bg : T.surfaceHover,
                 borderTop: `0.5px solid ${T.border}`,
                 borderLeft: `3px solid ${entry.isYou ? T.primary : 'transparent'}`,
               }}>

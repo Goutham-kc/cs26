@@ -13,7 +13,7 @@ function authHeaders() {
 
 async function handleResponse(res) {
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.message || data.reason || data.code || 'Request failed');
+  if (!res.ok) throw new Error(data.reason || data.message || data.code || 'Request failed');
   return data;
 }
 
@@ -111,4 +111,24 @@ export const oaq = {
   getModerationQueue: () => api.get('/oaq/moderation-queue'),
   getOpenQueries: () => api.get('/oaq/open-queries'),
   submitReply: (issueId, answer) => api.post(`/oaq/issues/${issueId}/community-reply`, { answer }),
+};
+
+export const threads = {
+  list: (params = {}) => {
+    const clean = Object.fromEntries(Object.entries(params).filter(([, v]) => v !== '' && v !== undefined && v !== null));
+    const q = new URLSearchParams(clean).toString();
+    return api.get(`/threads${q ? '?' + q : ''}`);
+  },
+  get: (id) => api.get(`/threads/${id}`),
+  create: (data) => api.post('/threads', data),
+  reply: (id, data) => api.post(`/threads/${id}/reply`, data),
+  voteReply: (id, replyId, type) => api.patch(`/threads/${id}/reply/${replyId}/vote`, { type }),
+  acceptReply: (id, replyId) => api.patch(`/threads/${id}/reply/${replyId}/accept`),
+  upvote: (id) => api.patch(`/threads/${id}/upvote`),
+  lock: (id) => api.patch(`/threads/${id}/lock`),
+  unlock: (id) => api.patch(`/threads/${id}/unlock`),
+  close: (id, spReward) => api.patch(`/threads/${id}/close`, { spReward }),
+  assign: (id, userId) => api.patch(`/threads/${id}/assign`, { userId }),
+  setPriority: (id, priority) => api.patch(`/threads/${id}/priority`, { priority }),
+  delete: (id) => api.delete(`/threads/${id}`),
 };

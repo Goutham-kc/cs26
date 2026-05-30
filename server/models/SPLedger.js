@@ -5,12 +5,13 @@ const { Schema, Types: { ObjectId } } = mongoose;
 // The user's sp field on User is the running total; this is the audit trail.
 const SPLedgerSchema = new Schema({
   userId:  { type: ObjectId, ref: 'User',     required: true },
-  delta:   { type: Number,   required: true },          // +50, +10, +5, -20
+  delta:   { type: Number,   required: true },
   reason:  { type: String,   required: true },
   issueId: { type: ObjectId, ref: 'OAQIssue', default: null },
+  threadId:{ type: ObjectId, ref: 'Thread',   default: null },
   event:   {
     type: String,
-    enum: ['FCFS_WIN', 'PENALTY', 'QUERY_BONUS', 'ESCALATION_BONUS'],
+    enum: ['FCFS_WIN', 'PENALTY', 'QUERY_BONUS', 'ESCALATION_BONUS', 'THREAD_CREATE', 'THREAD_REPLY', 'THREAD_RESOLVE'],
     required: true
   }
 }, { timestamps: true });
