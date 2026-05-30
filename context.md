@@ -1,248 +1,136 @@
-# Threads Feature Documentation
+# LLM Context Guide: Vicharanashala OAQ & Threads
+**Conceptual Product Specification & Feature Reference Document for AI Coding Assistants**
 
-## Overview
-The Threads feature is a Q&A/Discussion system where users can create discussion threads, reply to them in a nested tree structure, upvote/downvote, and have mentors/admins moderate them.
-
----
-
-## Thread List View (Full Page)
-- Displays a paginated list of threads (15 per page)
-- Filters: status (All/Open/Resolved/Locked), section category, priority
-- Each thread card shows: category tag, badges (priority, status), title, author, timestamp, upvote count, reply count
-- Clicking a thread navigates to the **full page detail view** (not a side panel)
+This document serves as the absolute conceptual reference for the **Vicharanashala OAQ & Threads** platform. It describes the core product idea, user experience, features, rules, and gamified mechanics from a user and product perspective, omitting all underlying technical implementation details.
 
 ---
 
-## Thread Detail View (Full Page)
-- Reached by clicking any thread from the list
-- Shows "← Back to threads" button to return
-- Thread header: category, status, priority, title, author info, timestamps
-- Thread body with labels
-- Action buttons (Lock/Unlock for mentors, Mark Resolved for admins, Upvote for all)
-- Replies section with nested tree display
-- Reply form at bottom (for non-locked threads)
+## 1. Project Concept & Mission
+
+### What is Vicharanashala OAQ?
+**Vicharanashala** is an onboarding and learning ecosystem for internships. **OAQ (Once Asked Questions)** is its core knowledge-sharing and query-tracking portal.
+
+* **The Problem**: Interns frequently hit blocking technical or administrative issues, leading to redundant queries for mentors and slow onboarding.
+* **The Solution**: A gamified, peer-to-peer query resolution system. Interns are incentivized to help resolve each other's blocking queries. The system ensures a question only needs to be asked and answered **once**—once resolved, it joins a searchable baseline knowledge base.
 
 ---
 
-## Reply Tree Rendering
-- **Reddit/convo style** with proper nesting and indentation
-- Each reply shows:
-  - Avatar circle with user's first initial
-  - Author name, timestamp
-  - Reply text
-  - Action buttons: Upvote/Downvote with score, Reply, Accept (for mentors)
-- **Inline reply form** appears below a reply when "Reply" is clicked
-- Nested replies are indented with a vertical connecting line
+## 2. Roster of Roles & Access Ranks
 
-### Key Functions
-- `buildReplyTree()` - Converts flat reply array into nested tree structure based on `parentReplyId`
-- `Reply` component - Renders a single reply with optional nested children
+Features are partitioned based on user responsibilities in the cohort:
+1. **Public / Cohort Member**: Can search baseline FAQs, read trending feeds, and browse resolved queries.
+2. **Intern**: Can raise dynamic queries, answer open FCFS queries, submit replies on resolved queries, raise forum threads, and vote on community replies.
+3. **Mentor**: Cohort moderator. Can flag low-quality replies, lock/unlock threaded discussions to halt comment sections, shift priority ranks, and assign threads to specific administrators.
+4. **Admin**: Cohort manager. Can manage user records, provision dynamic sections, manually override FCFS queries, and adjust SP wallet balances.
+5. **Superadmin**: Cohort director. Holds all manager controls and has exclusive authority to register/provision new Admins and trigger database seeder tools.
 
 ---
 
-## Voting System
-### Reply Votes
-- Users can upvote or downvote each reply (once per user per reply)
-- `upvotedBy` and `downvotedBy` arrays track who voted
-- Switching vote (up→down or down→up) is tracked properly
-- Score displayed as `upvotes - downvotes`
-- Error message shown if user tries to vote twice
+## 3. Product Features & How They Work (User Perspective)
 
-### Thread Upvotes
-- Users can upvote a thread once
-- `upvotedBy` array prevents duplicate upvotes
-- Error message shown if already upvoted
+Below is the complete list of all 13 features in the codebase, detailing their **Core Feature Idea** and **How it Works conceptually**.
 
 ---
 
-## Reply to Reply (Nested Replies)
-- Each reply has a "Reply" button
-- Clicking shows an inline reply form below that specific reply
-- Submitting creates a reply with `parentReplyId` set
-- Replies are nested based on `parentReplyId` in the tree structure
-- Can reply to any level of nesting
+### 1. 13 Locked Onboarding FAQ Baseline Accordions
+* **Core Feature Idea**: An instantly accessible, read-only onboarding FAQ center representing static categories to prevent common, basic administrative queries from cluttering the open query tracker board.
+* **How it Works**: Displays 13 onboarding topics (covering attendance, stipend release schedules, onboarding documents, weekly report formats, lab rules, evaluations, etc.). Users click a category to slide open the accordion card and read the verified answer.
 
 ---
 
-## Admin/Moderator Features
-
-### Lock/Unlock Thread (Mentor+)
-- Lock prevents new replies
-- Unlock reopens the thread
-
-### Mark Thread Resolved (Admin/Superadmin only)
-- Opens a modal with:
-  - SP amount input (optional)
-  - Dropdown of all users who participated (thread creator + everyone who replied)
-  - Default selection: thread creator
-- Submitting marks thread as Resolved and optionally awards SP
-
-### Mark Thread Resolved (Thread Creator/OP)
-- Original poster (OP) can mark their own thread as resolved
-- Does NOT open SP award modal - simply marks thread as resolved
-- Shows "✓ Mark Resolved" button next to Upvote button
-
-### OP Tag
-- When viewing a thread they created, the OP sees an "OP" badge next to their name
-- The badge is styled with primary color background
-
-### Accept Reply as Answer (Mentor+)
-- Accepts a specific reply as the best answer
-- Marks thread as Resolved
-- Reply is marked with `isPromoted` flag and shown as "✓ Accepted"
+### 2. First-Come, First-Served (FCFS) Query Resolution Tracker
+* **Core Feature Idea**: Gamify query resolution by creating a dynamic tracking board where interns compete to solve active technical roadblocks raised by their peers.
+* **How it Works**: Lists all unresolved queries in a public tracking table grid. The first intern to submit a response "claims" the FCFS resolution. If two users attempt to resolve the same query simultaneously, the slower request is rejected with a collision alert to prevent double-resolutions. Once successfully submitted, the proposed answer enters a pending state awaiting community votes.
 
 ---
 
-## SP Award System
-SP can be awarded in these thread-related events:
-- `THREAD_CREATE` - When user creates a thread (handled elsewhere)
-- `THREAD_RESOLVE` - When admin marks thread resolved with SP reward
-- `THREAD_CLOSE` - When mentor closes thread with SP reward
-- `THREAD_REPLY` - When user replies (handled elsewhere)
-
-All SP transactions are logged in the SPLedger with:
-- `userId` - Who received the SP
-- `delta` - Amount (positive for credit, negative for debit)
-- `reason` - Human-readable description
-- `event` - Event type enum
-- `threadId` - Reference to the thread (for THREAD_RESOLVE, THREAD_CLOSE)
+### 3. Automated Content Quality Auditor (Yaksha-mini)
+* **Core Feature Idea**: An automated content gate checking submitted answers in real-time to protect the knowledge base from keyboard mashing, spam, copy-paste blocks, or low-quality one-liners.
+* **How it Works**: Runs automatically during resolutions and reply submissions. It checks that the answer is at least 20 characters long, has at least 3 words, is not repetitive keyboard gibberish, and has a high percentage of meaningful words. If a submission fails, it is rejected and a penalty deduction is applied to the resolver's points ledger.
 
 ---
 
-## API Endpoints (Server)
-
-### GET /api/threads
-List threads with filters (status, priority, category, search, pagination)
-
-### GET /api/threads/:id
-Get single thread with full details and populated replies
-
-### POST /api/threads
-Create new thread
-
-### POST /api/threads/:id/reply
-Add reply to thread. Supports `parentReplyId` for nested replies
-
-### PATCH /api/threads/:id/reply/:replyId/vote
-Vote on a reply (up/down). Tracks voter in `upvotedBy`/`downvotedBy` arrays
-
-### PATCH /api/threads/:id/reply/:replyId/accept
-Accept reply as best answer (mentor+). Marks thread resolved
-
-### PATCH /api/threads/:id/upvote
-Upvote a thread (one per user, tracked in `upvotedBy`)
-
-### PATCH /api/threads/:id/lock
-Lock a thread (mentor+)
-
-### PATCH /api/threads/:id/unlock
-Unlock a thread (mentor+)
-
-### PATCH /api/threads/:id/resolve
-Mark thread as resolved (admin+). Optional SP reward with user selection
-
-### PATCH /api/threads/:id/close
-Close thread with optional SP reward (mentor+). Used for locking with SP
+### 4. Community Auto-Promotion System
+* **Core Feature Idea**: Peer-driven validation of knowledge, allowing the collective community of interns to verify and approve answers.
+* **How it Works**: When an intern submits an answer to an open FCFS query, it remains in a pending review queue. Other interns review the proposed solution and can upvote or downvote it. Once the proposed resolution gains 3 net community upvotes, the answer is auto-promoted to "Resolved" and locks in as the master answer, rewarding the resolver with points.
 
 ---
 
-## Data Models
-
-### ThreadReply Schema
-```javascript
-{
-  repliedBy: ObjectId (ref: User),
-  replyText: String,
-  isAcceptedFirst: Boolean,
-  isPromoted: Boolean,
-  upvotes: Number,
-  downvotes: Number,
-  upvotedBy: [ObjectId] (ref: User),
-  downvotedBy: [ObjectId] (ref: User),
-  parentReplyId: ObjectId (for nested replies),
-  timestamp: Date
-}
-```
-
-### Thread Schema
-```javascript
-{
-  title: String,
-  body: String,
-  categoryTag: String,
-  status: 'Open' | 'Resolved' | 'Locked',
-  priority: 'NORMAL' | 'HIGH',
-  labels: [String],
-  assignedTo: ObjectId (ref: User),
-  isPinned: Boolean,
-  isLocked: Boolean,
-  upvoteCount: Number,
-  upvotedBy: [ObjectId] (ref: User),
-  viewCount: Number,
-  resolvedBy: ObjectId (ref: User),
-  bestReplyId: ObjectId,
-  raisedBy: ObjectId (ref: User),
-  threadReplies: [ThreadReply]
-}
-```
-
-### SPLedger Schema
-```javascript
-{
-  userId: ObjectId,
-  delta: Number,
-  reason: String,
-  issueId: ObjectId (ref: OAQIssue),
-  threadId: ObjectId (ref: Thread),
-  event: 'FCFS_WIN' | 'PENALTY' | 'QUERY_BONUS' | 'ESCALATION_BONUS' | 'THREAD_CREATE' | 'THREAD_REPLY' | 'THREAD_RESOLVE' | 'THREAD_CLOSE'
-}
-```
+### 5. Auto-Escalation Threshold Hook
+* **Core Feature Idea**: Ensure high-severity roadblocks or queries of broad interest are automatically highlighted for mentor attention.
+* **How it Works**: Tracks upvotes on open tracker questions. If an unresolved query reaches 5 upvotes in a 2-hour window, the system automatically elevates its priority status from Normal to High to alert mentors.
 
 ---
 
-## Client State (ThreadsPage.jsx)
-
-```javascript
-const [threadsList, setThreadsList] = useState([]);
-const [loading, setLoading] = useState(true);
-const [total, setTotal] = useState(0);
-const [page, setPage] = useState(1);
-const [threadDetail, setThreadDetail] = useState(null);  // Full page view
-const [filter, setFilter] = useState({ status: '', priority: '', category: '' });
-const [showCreate, setShowCreate] = useState(false);
-const [createData, setCreateData] = useState({ title, body, categoryTag, labels });
-const [replyText, setReplyText] = useState('');
-const [replyingTo, setReplyingTo] = useState(null);  // Which reply we're inline-replying to
-const [inlineReplyText, setInlineReplyText] = useState('');
-const [showResolveModal, setShowResolveModal] = useState(false);
-const [resolveThread, setResolveThread] = useState(null);
-const [resolveSp, setResolveSp] = useState('');
-const [resolveUserId, setResolveUserId] = useState('');
-```
+### 6. Collaborative Recommendation Rail (People Also Asked)
+* **Core Feature Idea**: Suggest contextually related, highly relevant queries based on the collective search and browsing habits of the cohort.
+* **How it Works**: The system learns which questions are frequently viewed together during search sessions and displays the top related questions alongside the active query as "People Also Asked" recommendations.
 
 ---
 
-## Key Functions
-
-- `load()` - Fetch thread list with current filters/pagination
-- `handleOpenThread(threadId)` - Fetch and display full thread detail
-- `handleBack()` - Return to thread list
-- `handleReply(e)` - Submit top-level reply to thread
-- `handleInlineReply(parentReplyId)` - Submit nested reply
-- `handleVote(threadId, replyId, type)` - Vote on reply
-- `handleAccept(threadId, replyId)` - Accept reply as best answer
-- `handleUpvote(thread)` - Upvote a thread
-- `handleLock(thread)` - Lock/unlock thread
-- `handleResolve(thread)` - Open resolve modal
-- `handleResolveSubmit()` - Submit resolve with SP award
-- `getThreadParticipants()` - Get unique users who interacted with thread (for resolve dropdown)
-- `buildReplyTree(replies, parentId)` - Build nested tree from flat replies
-- `timeAgo(dateStr)` - Format timestamp as relative time
+### 7. RSS Trending Feed
+* **Core Feature Idea**: Keep interns updated with the cohort's most relevant resolved issues and trending announcements.
+* **How it Works**: Displays the top 15 resolved issues across all categories, sorted by upvote counts and timestamps, as a trending RSS feed on the homepage that refreshes automatically.
 
 ---
 
-## Styling Conventions
-- Inline styles using CSS variables for theming (`var(--color-*)`)
-- Buttons have: background, border, borderRadius, padding, fontSize, cursor
-- Action buttons grouped with `display: flex, gap`
-- Reply nesting indicated by `marginLeft` and vertical connecting line
+### 8. Voice Search & Speech Playback
+* **Core Feature Idea**: Enhance accessibility and interactive engagement by offering voice-controlled search and auditory answer playback.
+* **How it Works**: Users can speak to search baseline FAQs, and click an audio speaker icon to hear titles read aloud in a natural, local voice accent.
+
+---
+
+### 9. Gamified Skill Points (SP) & Wallet Subsystem
+* **Core Feature Idea**: Motivate cohort interns to actively participate and support peers by providing gamified metrics, progress visualizers, and milestones.
+* **How it Works**: 
+  - **Counter**: Animates the user's active points total on load.
+  - **Statement Ledger**: A detailed credit/debit ledger showing reasons for every change.
+  - **Cohort Scale**: A dynamic bar chart comparing all active intern balances relative to the highest earner.
+  - **SP Trend Chart**: A transactional bar chart. Scales negative penalty trend bars beautifully inside visual bounds.
+  - **Milestone Badges**: Automatically unlocks dynamic visual badges based on win counts and points milestones.
+
+---
+
+### 10. Collaborative Nested Thread Discussions
+* **Core Feature Idea**: Provide a nested discussion forum to handle complex, deep-dive technical conversations that extend beyond standard Q&A accordions.
+* **How it Works**:
+  - **Nested Tree Layout**: Renders replies in indented conversation trees similar to forum message boards.
+  - **Visual Indents**: Indent styles paired with vertical connecting lines visually outline nested trees.
+  - **OP Tags**: The thread creator is labeled with an "OP" badge in discussions to denote the original author.
+  - **Interactive Actions**: Users upvote/downvote replies, and reply nested inline.
+  - **Thread Lock/Unlock (Mentor+)**: Mentors can lock a thread to halt any incoming replies, and unlock it to reopen the discussion.
+  - **Mark Thread Resolved (OP/Creator)**: The original thread creator can mark their own thread as resolved conceptually to indicate they are satisfied. This is a simple action that does not award SP.
+  - **Dynamic Resolution SP Award (Admin and Superadmin only)**: When an Admin or Superadmin marks a thread as resolved, a modal popup lets them award a custom amount of Skill Points (SP) to a selected thread participant. The Admin or Superadmin can choose the recipient from a dropdown of everyone who participated in the thread (the original thread creator + all resolvers who posted a reply), defaulting to the thread creator.
+  - **Best Reply Promotion (Mentor+)**: Mentors can accept any specific reply as the best answer. This automatically marks the thread as resolved, highlights the reply as "Accepted," and credits the resolver.
+
+---
+
+### 11. Dynamic Section Filters
+* **Core Feature Idea**: Allow users to filter large sets of questions based on specific categories or dynamic topics.
+* **How it Works**: Users select one or more categories in a filter bar, immediately refining the visible queries on the homepage or tracker boards to only matching categories.
+
+---
+
+### 12. Admin Moderation & Dynamic Management Panel
+* **Core Feature Idea**: Provide administrative overseers with a consolidated dashboard to organize categories, manage cohort rosters, and review flagged items.
+* **How it Works**:
+  - **Mod Queues**: Displays distinct queues for flagged replies, downvoted issues, and unanswered queries.
+  - **Roster Edits & Secure Promotion Hierarchy**: Allows admins to modify cohort profiles and SP balances. Protects role assignments; a user can never change their own role, and only Superadmins hold the exclusive authority to assign the Admin or Superadmin role. Admins can only assign the Mentor role if the target is already a Mentor or Admin.
+  - **Dynamic Sections**: Offers full CRUD operations over category lists.
+  - **Seeder Gates**: Houses master seeder triggers to clear and re-initialize baseline onboarding collections.
+
+---
+
+### 13. Real-Time Sync Broadcaster
+* **Core Feature Idea**: Ensure all online participant sessions are instantly synchronized when events occur in the cohort, without manual refreshes.
+* **How it Works**: When actions occur (queries raised, answers proposed, auto-resolutions reached, threads locked/escalated), the updates are instantly synced across all active users' screens in real-time.
+
+---
+
+## 4. Gamification & System Rules
+
+* **Proposing an FCFS Answer (Reply Deposit)**: `+5 SP` (awarded immediately upon submitting a valid answer to an open query)
+* **Resolving an Open Query (FCFS Win)**: `+50 SP` (awarded when your proposed answer is auto-promoted or manually accepted)
+* **Submitting a Unique Query (Query Bonus)**: `+10 SP`
+* **Auto-Escalating to HIGH (Escalation Bonus)**: `+5 SP` (awarded to original author)
+* **Failing automated quality audits (Yaksha Penalty)**: `-20 SP`
