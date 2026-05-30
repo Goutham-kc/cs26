@@ -368,6 +368,20 @@ export default function ThreadsPage() {
     }
   };
 
+  const handleResolveAsOp = async (thread) => {
+    try {
+      const result = await threads.resolve(thread._id, { spReward: 0, rewardUserId: null });
+      addToast('Thread marked as resolved');
+      if (threadDetail?._id === thread._id) {
+        const full = await threads.get(thread._id);
+        setThreadDetail(full);
+      }
+      load();
+    } catch (e) {
+      addToast(e.message, 'error');
+    }
+  };
+
   const getThreadParticipants = () => {
     if (!threadDetail) return [];
     const users = new Map();
@@ -410,8 +424,17 @@ export default function ThreadsPage() {
                 {threadDetail.isLocked && <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>🔒</span>}
               </div>
               <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>{threadDetail.title}</h1>
-              <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
-                {threadDetail.raisedBy?.name} · {timeAgo(threadDetail.createdAt)} · ▲ {threadDetail.upvoteCount} · 💬 {threadDetail.threadReplies?.length}
+              <div style={{ fontSize: 11, color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span>{threadDetail.raisedBy?.name}</span>
+                {user?._id === threadDetail.raisedBy?._id && (
+                  <span style={{ background: 'var(--color-primary)', color: 'var(--color-inv-text)', padding: '1px 5px', borderRadius: 3, fontSize: 9, fontWeight: 700 }}>OP</span>
+                )}
+                <span>·</span>
+                <span>{timeAgo(threadDetail.createdAt)}</span>
+                <span>·</span>
+                <span>▲ {threadDetail.upvoteCount}</span>
+                <span>·</span>
+                <span>💬 {threadDetail.threadReplies?.length}</span>
               </div>
             </div>
 
@@ -445,6 +468,23 @@ export default function ThreadsPage() {
                     {threadDetail.isLocked ? 'Unlock' : 'Lock'}
                   </button>
                 )}
+                {user?._id === threadDetail.raisedBy?._id && threadDetail.status !== 'Resolved' && (
+                  <button
+                    onClick={() => handleResolveAsOp(threadDetail)}
+                    style={{
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: 6,
+                      cursor: 'pointer',
+                      fontSize: 12,
+                      color: 'var(--color-text-secondary)',
+                      padding: '6px 14px',
+                      fontWeight: 500
+                    }}
+                  >
+                    ✓ Mark Resolved
+                  </button>
+                )}
                 {(user?.role === 'admin' || user?.role === 'superadmin') && threadDetail.status !== 'Resolved' && (
                   <button
                     onClick={() => handleResolve(threadDetail)}
@@ -459,7 +499,7 @@ export default function ThreadsPage() {
                       fontWeight: 600
                     }}
                   >
-                    ✓ Mark Resolved
+                    ✓ Mark Resolved (Award SP)
                   </button>
                 )}
                 <button
@@ -567,13 +607,54 @@ export default function ThreadsPage() {
                 </button>
               </div>
             </form>
-          </div>
-        )}
-      </div>
-    );
-  }
+</div>
+      )}
 
-  return (
+      {showResolveModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', padding: '24px', width: 400, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <h3 style={{ fontSize: 15, fontWeight: 700 }}>Mark as Resolved</h3>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 4, display: 'block' }}>Award SP (optional)</label>
+              <input
+                type="number"
+                value={resolveSp}
+                onChange={e => setResolveSp(e.target.value)}
+                placeholder="Enter SP amount or leave blank"
+                style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', fontSize: 12, fontFamily: 'var(--font-mono)', background: 'var(--color-bg)', color: 'var(--color-text-primary)' }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 4, display: 'block' }}>Award SP to</label>
+              <select
+                value={resolveUserId}
+                onChange={e => setResolveUserId(e.target.value)}
+                style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', fontSize: 12, background: 'var(--color-bg)', color: 'var(--color-text-primary)' }}
+              >
+                {getThreadParticipants().map(u => (
+                  <option key={u._id} value={u._id}>{u.name} {u.role ? `(${u.role})` : ''}</option>
+                ))}
+              </select>
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button type="button" className="btn btn-sm" onClick={() => setShowResolveModal(false)} style={{ background: 'var(--color-border)' }}>Cancel</button>
+              <button
+                type="button"
+                onClick={handleResolveSubmit}
+                disabled={resolveSubmitting}
+                className="btn btn-primary btn-sm"
+              >
+                {resolveSubmitting ? 'Resolving…' : 'Resolve'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+return (
     <div className="app-shell">
       <main className="main-content">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
@@ -688,6 +769,47 @@ export default function ThreadsPage() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {showResolveModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', padding: '24px', width: 400, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <h3 style={{ fontSize: 15, fontWeight: 700 }}>Mark as Resolved</h3>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 4, display: 'block' }}>Award SP (optional)</label>
+              <input
+                type="number"
+                value={resolveSp}
+                onChange={e => setResolveSp(e.target.value)}
+                placeholder="Enter SP amount or leave blank"
+                style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', fontSize: 12, fontFamily: 'var(--font-mono)', background: 'var(--color-bg)', color: 'var(--color-text-primary)' }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 4, display: 'block' }}>Award SP to</label>
+              <select
+                value={resolveUserId}
+                onChange={e => setResolveUserId(e.target.value)}
+                style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', fontSize: 12, background: 'var(--color-bg)', color: 'var(--color-text-primary)' }}
+              >
+                {getThreadParticipants().map(u => (
+                  <option key={u._id} value={u._id}>{u.name} {u.role ? `(${u.role})` : ''}</option>
+                ))}
+              </select>
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button type="button" className="btn btn-sm" onClick={() => setShowResolveModal(false)} style={{ background: 'var(--color-border)' }}>Cancel</button>
+              <button
+                type="button"
+                onClick={handleResolveSubmit}
+                disabled={resolveSubmitting}
+                className="btn btn-primary btn-sm"
+              >
+                {resolveSubmitting ? 'Resolving…' : 'Resolve'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

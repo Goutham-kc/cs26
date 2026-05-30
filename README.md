@@ -1,7 +1,7 @@
 # OAQ & Threads System — Vicharanashala
 **Once Asked Questions · Threaded discussions · SP & Wallet System · MERN Stack · v2.0**
 
-A premium, state-of-the-art Knowledge sharing and Query Tracking portal built with high visual standards (sleek Monochrome Light / Discord Blurple Dark theme) featuring automated content audits, gamified Skill Points (SP) allocation, real-time Socket.io pub/sub, and collaborative nested threads.
+A premium, state-of-the-art Knowledge sharing and Query Tracking portal built with high visual standards (sleek Monochrome Light / Blurple Dark theme) featuring automated content audits, gamified Skill Points (SP) allocation, real-time Socket.io pub/sub, and collaborative nested threads.
 
 ---
 
@@ -73,7 +73,7 @@ cs26/ (root)
     │   ├── App.jsx            # Dynamic client routing and view control
     │   ├── global.css         # Baseline monochrome styles and global animations
     │   ├── context/
-    │   │   ├── ThemeContext.jsx   # Overwrites 28 dynamic CSS variables (Discord Dark mode)
+    │   │   ├── ThemeContext.jsx   # Overwrites 28 dynamic CSS variables (Blurple Dark mode)
     │   │   ├── AuthContext.jsx    # Session management & JWT token storage
     │   │   ├── SocketContext.jsx  # Event listeners for real-time notifications
     │   │   └── ToastContext.jsx   # Alert overlays
@@ -102,42 +102,90 @@ cs26/ (root)
 ### 🔐 Authentication (`/api/auth`)
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
-| POST | `/api/auth/register` | Open | Create new account |
+| POST | `/api/auth/register` | Open | Create a new user account |
 | POST | `/api/auth/login` | Open | Authenticate user & return JWT token |
+
+### 👤 User Information (`/api/user`)
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| GET | `/api/user/me` | Logged In | Get profile details of the active session user |
+| GET | `/api/user/:id/stats` | Logged In | Retrieve SP metrics & ledger counters for a user |
 
 ### 📋 OAQ & FCFS Tracker (`/api/oaq`)
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
-| GET | `/api/oaq/baseline` | Open | Fetch the 13 locked onboarding FAQs |
-| GET | `/api/oaq/trending` | Open | Fetch top 15 resolved issues (RSS format) |
-| GET | `/api/oaq/search` | Open | Full-text query with Section filters |
-| GET | `/api/oaq/tracker` | Open | Retrieve FCFS tracking issues |
+| GET | `/api/oaq/baseline` | Open | Fetch the 13 locked onboarding baseline FAQs |
+| GET | `/api/oaq/trending` | Open | Fetch top 15 resolved issues (frequency-sorted RSS feed) |
+| GET | `/api/oaq/search` | Open | Search queries using text-index weightings with category filters |
+| GET | `/api/oaq/open-queries` | Open | Fetch unresolved queries having community replies |
+| GET | `/api/oaq/tracker` | Open | Retrieve non-baseline tracking issues sorted by priority |
+| GET | `/api/oaq/:id` | Open | Retrieve full issue details with populated participant records |
+| GET | `/api/oaq/:id/related` | Open | Get related issues from recommendation rail (co-occurrence) |
 | POST | `/api/oaq` | Intern+ | Submit a new query (+10 SP query bonus) |
-| POST | `/api/oaq/issues/:id/resolve` | Intern+ | Resolve query (Yaksha audit → FCFS Auto-promote) |
-| POST | `/api/oaq/issues/:id/reply` | Intern+ | Post a reply on a resolved issue |
-| PATCH | `/api/oaq/issues/:id/upvote` | Intern+ | Upvote issue (triggers escalation checks) |
-| POST | `/api/oaq/seed-baseline` | Superadmin | Clears and seeds all 13 standard category records |
+| POST | `/api/oaq/:id/view` | Intern+ | Log issue views to build the collaborative filtering matrix |
+| POST | `/api/oaq/mock-import` | Admin | Bulk-import resolved query arrays (avoids text duplicates) |
+| POST | `/api/oaq/seed-baseline` | Superadmin | Flushes and seeds all 13 standard category records |
+| POST | `/api/oaq/issues/:id/resolve` | Intern+ | Submit answer (Yaksha audit → active upvote resolution) |
+| POST | `/api/oaq/issues/:id/reply` | Intern+ | Reply to an issue that is already marked as Resolved |
+| POST | `/api/oaq/issues/:id/community-reply` | Intern+ | Post a community response on an open tracker query |
+| PATCH | `/api/oaq/issues/:id/upvote` | Intern+ | Upvote issue (triggers automatic priority-escalation checks) |
+| PATCH | `/api/oaq/issues/:id/replies/:replyId/vote` | Intern+ | Upvote or downvote community replies (3 upvotes auto-promotes) |
+| PATCH | `/api/oaq/issues/:id/replies/:replyId/flag` | Mentor+ | Flag a low-quality reply for moderation |
+| PATCH | `/api/oaq/issues/:id/replies/:replyId/promote` | Mentor+ | Manually promote an intern's reply to the master answer (+50 SP) |
+| PATCH | `/api/oaq/issues/:id/mentor-signoff` | Mentor+ | Approve resolution and sign off the issue |
+| GET | `/api/oaq/moderation-queue` | Mentor+ | Retrieve flagged, downvoted, and unanswered issues |
 
 ### 💬 Threaded Conversations (`/api/threads`)
 *Supports collaborative nested replies, pinned threads, and voting.*
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
-| GET | `/api/threads` | Open | List, search, and filter community threads |
-| GET | `/api/threads/:id` | Open | Retrieve single thread with nested replies |
-| POST | `/api/threads` | Intern+ | Raise a new thread |
-| POST | `/api/threads/:id/reply` | Intern+ | Submit a reply (supports parent threading) |
-| PATCH | `/api/threads/:id/reply/:replyId/vote` | Intern+ | Upvote/downvote replies (auto-resolves at 3 upvotes) |
-| PATCH | `/api/threads/:id/reply/:replyId/accept` | Intern+ | Accept specific reply as the best answer |
-| PATCH | `/api/threads/:id/lock` | Mentor+ | Prevent incoming replies |
-| PATCH | `/api/threads/:id/assign` | Mentor+ | Assign thread to specific admin/mentor |
+| GET | `/api/threads` | Open | List, search, and filter forum threads (category, label, search) |
+| GET | `/api/threads/:id` | Open | Retrieve single thread with nested parent-child replies |
+| POST | `/api/threads` | Intern+ | Raise a new forum conversation thread |
+| POST | `/api/threads/:id/reply` | Intern+ | Submit reply (supports parentReplyId nested threading) |
+| PATCH | `/api/threads/:id/reply/:replyId/vote` | Intern+ | Vote up/down on reply (3 upvotes triggers auto-promote) |
+| PATCH | `/api/threads/:id/reply/:replyId/accept` | Intern+ | Owner/Mentor accepts specific reply as the best answer |
+| PATCH | `/api/threads/:id/upvote` | Intern+ | Upvote a thread |
+| PATCH | `/api/threads/:id/close` | Mentor+ | Close thread and optionally reward best replier with custom SP |
+| PATCH | `/api/threads/:id/lock` | Mentor+ | Restrict comments/replies on a thread |
+| PATCH | `/api/threads/:id/unlock` | Mentor+ | Unlock comments/replies on a locked thread |
+| PATCH | `/api/threads/:id/assign` | Mentor+ | Assign the thread to a specific Mentor/Admin |
+| PATCH | `/api/threads/:id/priority` | Mentor+ | Toggle thread priority status between NORMAL and HIGH |
+| DELETE | `/api/threads/:id` | Admin+ | Delete thread permanently from the database |
 
 ### 🪙 Gamified Wallet & SP (`/api/sp`)
 *Fully active transaction tracking with automated seeder rules.*
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
-| GET | `/api/sp/wallet` | Intern+ | Retrieve active SP balances, badges, and trends |
-| GET | `/api/sp/ledger` | Intern+ | Paginated history of all delta statements |
-| GET | `/api/sp/leaderboard` | Intern+ | Top-ranked cohort members with win ratios |
+| GET | `/api/sp/wallet` | Intern+ | Retrieve active SP balances, dynamic badges, and trend history |
+| GET | `/api/sp/ledger` | Intern+ | Paginated history of all delta statements (credits and penalties) |
+| GET | `/api/sp/leaderboard` | Intern+ | Top-ranked cohort members annotated with FCFS wins |
+
+### 🛡️ Admin Controls (`/api/admin`)
+*Dashboard controls, moderation grids, and dynamic records CRUD.*
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| GET | `/api/admin/stats` | Admin+ | Retrieve aggregate metrics (Total users, issues, pins, leader) |
+| GET | `/api/admin/issues` | Admin+ | Fetch paginated tracking list of all system issues |
+| GET | `/api/admin/issues/:id` | Admin+ | Load target issue for moderation audit |
+| POST | `/api/admin/issues` | Admin+ | Manually insert a verified, fully-resolved issue |
+| PATCH | `/api/admin/issues/:id` | Admin+ | Update query text, answer text, priority, or category |
+| PATCH | `/api/admin/issues/:id/pin` | Admin+ | Toggle issue pinning (shows at top of home view) |
+| PATCH | `/api/admin/issues/:id/feature` | Admin+ | Toggle issue featured flag (highlights in trending) |
+| PATCH | `/api/admin/issues/:id/resolve` | Admin+ | Manually resolve an open issue |
+| DELETE | `/api/admin/issues/:id` | Admin+ | Delete issue permanently from the database |
+| GET | `/api/admin/users` | Admin+ | Searchable list of all cohort users with role filtering |
+| PATCH | `/api/admin/users/:id` | Admin+ | Adjust user profile details, role settings, or SP balance |
+| POST | `/api/admin/users` | Admin+ | Provision a new user account (intern, mentor, admin, superadmin) |
+| GET | `/api/admin/users/:id/sp-history` | Admin+ | View complete audit ledger for a specific target user |
+| GET | `/api/admin/sections` | Admin+ | List all active dynamic category sections |
+| POST | `/api/admin/sections` | Admin+ | Add and register a new dynamic category section |
+
+### 📂 Dynamic Sections (`/api/sections`)
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| GET | `/api/sections` | Open | Retrieve all categories and baseline sections for filter bar |
+| POST | `/api/sections` | Admin+ | Register a new dynamic section category |
 
 ---
 
@@ -167,14 +215,14 @@ A strict, premium, high-contrast monochrome layout matching WCAG AA color rules:
 - **Text Color**: `#111111` / Secondary: `#6B7280`
 - **Borders**: `#E5E7EB`
 
-### 🌙 Discord-like Dark Mode
+### 🌙 Blurple Dark Mode
 A vibrant, custom Dark Mode with Blurple highlights resembling modern development tools:
-- **Body Background**: `#313338` (Discord primary)
-- **Container Alt Background**: `#1e1f22` (Discord sidebar dark)
+- **Body Background**: `#313338` (Primary dark background)
+- **Container Alt Background**: `#1e1f22` (Darker alt background)
 - **Surface Panels**: `#2b2d31` / Hover: `#35373c`
 - **Active Accents**: `#5865f2` (Blurple)
 - **Primary Text**: `#f2f3f5` / Secondary: `#b5bac1`
 - **Borders**: `#3c3f46` / Strong Borders: `#4a4d55`
-- **Teal Statuses**: `#23a55a` (Discord Green)
-- **Red Alerts**: `#f23f43` (Discord Red)
-- **Amber Highlights**: `#f0b232` (Discord Amber)
+- **Teal Statuses**: `#23a55a` (Theme Green)
+- **Red Alerts**: `#f23f43` (Theme Red)
+- **Amber Highlights**: `#f0b232` (Theme Amber)
