@@ -328,7 +328,7 @@ export default function ThreadsPage() {
         const spRaw = prompt('Close thread — award SP to thread creator? (Enter SP amount or leave blank to close without SP)');
         if (spRaw === null) return;
         const spReward = parseInt(spRaw) || 0;
-        await threads.close(thread._id, spReward, thread.raisedBy._id);
+        await threads.close(thread._id, { spReward, rewardUserId: thread.raisedBy._id });
         addToast(spReward > 0 ? `Thread closed — ${spReward} SP awarded` : 'Thread closed');
         if (threadDetail?._id === thread._id) {
           const full = await threads.get(thread._id);
@@ -712,7 +712,7 @@ return (
                   <div style={{ fontSize: 13, fontWeight: 600 }}>{thread.title}</div>
                   <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 3 }}>
                     {thread.raisedBy?.name} · {timeAgo(thread.createdAt)} · ▲ {thread.upvoteCount} · 💬 {thread.threadReplies?.length || 0}
-                    {thread.assignedTo && <span> · Assigned: {thread.assignedTo.name}</span>}
+                    {thread.assignedTo?.name && <span> · Assigned: {thread.assignedTo.name}</span>}
                   </div>
                 </div>
                 <button onClick={(e) => { e.stopPropagation(); handleUpvote(thread); }} className="upvote-btn">▲</button>

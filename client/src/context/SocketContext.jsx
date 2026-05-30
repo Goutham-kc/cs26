@@ -8,14 +8,15 @@ export function SocketProvider({ children }) {
   const { user } = useAuth();
   const socketRef = useRef(null);
   const [connected, setConnected] = useState(false);
+  const [socketState, setSocketState] = useState(null);
 
   useEffect(() => {
     const socket = io('/', { transports: ['websocket'] });
     socketRef.current = socket;
+    setSocketState(socket);
 
     socket.on('connect', () => {
       setConnected(true);
-      // Join mentor room if applicable
       if (user?.role === 'mentor' || user?.role === 'admin') {
         socket.emit('join:mentors');
       }
@@ -26,7 +27,7 @@ export function SocketProvider({ children }) {
   }, [user]);
 
   return (
-    <SocketContext.Provider value={{ socket: socketRef.current, connected }}>
+    <SocketContext.Provider value={{ socket: socketState, connected }}>
       {children}
     </SocketContext.Provider>
   );

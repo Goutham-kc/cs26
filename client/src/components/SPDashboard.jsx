@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getWallet, getLedger, getLeaderboard } from '../services/api';
-import { useSocket } from '../hooks/useSocket';
+import { useSocket as useSocketContext } from '../context/SocketContext';
 
 // ── Monochrome design tokens (spec §12) ──────────────────────────────────────
 const T = {
@@ -245,6 +245,7 @@ export default function SPDashboard({ user }) {
   const [loading,    setLoading]    = useState(true);
   const [banner,     setBanner]     = useState(null);
   const [spAnim,     setSpAnim]     = useState(0);
+  const { socket } = useSocketContext();
 
   // ── Data fetching ──────────────────────────────────────────────────────────
 
@@ -284,15 +285,22 @@ export default function SPDashboard({ user }) {
 
   // ── Socket.io real-time ────────────────────────────────────────────────────
 
-  useSocket({
-    onResolved: ({ issueId }) => {
+  useEffect(() => {
+    if (!socket) return;
+    const onResolved = () => {
       setBanner(`Issue resolved — FCFS winner minted +50 SP`);
-      fetchAll();  // re-fetch wallet + ledger to reflect the new state
-    },
-    onEscalated: ({ issueId }) => {
+      fetchAll();
+    };
+    const onEscalated = () => {
       setBanner(`Issue escalated to HIGH priority — +5 SP awarded to query author`);
-    }
-  });
+    };
+    socket.on('issue:resolved', onResolved);
+    socket.on('issue:escalated', onEscalated);
+    return () => {
+      socket.off('issue:resolved', onResolved);
+      socket.off('issue:escalated', onEscalated);
+    };
+  }, [socket, fetchAll]);
 
   // ── Filtered ledger entries ────────────────────────────────────────────────
 

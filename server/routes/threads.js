@@ -22,6 +22,11 @@ async function promoteReply(thread, replyId) {
     $set: { 'threadReplies.$[r].isPromoted': true, 'threadReplies.$[r].isAcceptedFirst': true } },
     { arrayFilters: [{ 'r._id': replyId }] }
   );
+  await awardSP(
+    reply.repliedBy, 50,
+    `Best reply accepted: Thread "${thread.title.slice(0, 60)}"`,
+    'THREAD_RESOLVE', thread._id
+  );
   return reply;
 }
 

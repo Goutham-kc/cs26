@@ -25,18 +25,20 @@ export default function SectionFilter({ onChange }) {
 
   return (
     <div style={{ position: 'relative' }}>
-      <div style={{
-        position: hovered ? 'absolute' : 'hidden',
-        top: '100%', left: 0, zIndex: 100,
-        fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--color-secondary)',
-        padding: '8px 14px', background: 'var(--color-surface)',
-        border: '1px solid var(--color-border)', borderRadius: 'var(--radius)',
-        lineHeight: 1.6, maxWidth: 320, marginTop: 4,
-        boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-        whiteSpace: 'normal', wordBreak: 'break-word'
-      }}>
-        {sections.find(s => s.sectionId === hovered)?.description}
-      </div>
+      {hovered && (
+        <div style={{
+          position: 'absolute',
+          top: '100%', left: 0, zIndex: 100,
+          fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--color-secondary)',
+          padding: '8px 14px', background: 'var(--color-surface)',
+          border: '1px solid var(--color-border)', borderRadius: 'var(--radius)',
+          lineHeight: 1.6, maxWidth: 320, marginTop: 4,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+          whiteSpace: 'normal', wordBreak: 'break-word'
+        }}>
+          {sections.find(s => s.sectionId === hovered)?.description}
+        </div>
+      )}
       <div className="filter-bar">
         {sections.map(s => (
           <button

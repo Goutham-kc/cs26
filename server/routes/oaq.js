@@ -301,6 +301,7 @@ router.post('/', auth, async (req, res) => {
 router.post('/issues', auth, async (req, res) => {
   req.url = '/';
   router.handle(req, res);
+  return;
 });
 
 router.post('/issues/:id/resolve', auth, async (req, res) => {
@@ -390,7 +391,6 @@ router.patch('/issues/:id/replies/:replyId/vote', auth, async (req, res) => {
 
     const promoted = await checkAutoPromote(updatedIssue);
     if (promoted) {
-      const io = req.app.get('io');
       if (io) io.emit('issue:resolved', { issueId: issue._id, queryText: issue.queryText });
       return res.json({ code: 'AUTO_PROMOTED', message: 'Reply auto-promoted by community votes', issue: updatedIssue });
     }
@@ -415,6 +415,7 @@ router.post('/issues/:id/community-reply', auth, async (req, res) => {
       return res.status(400).json({ code: 'YAKSHA_REJECT', penalty: -20, reason: audit.reason });
     }
 
+    if (!answer?.trim()) return res.status(400).json({ message: 'Answer cannot be empty' });
     const updatedIssue = await OAQIssue.findByIdAndUpdate(
       req.params.id,
       { $push: { communityReplies: { repliedBy: req.user._id, replyText: answer } } },
@@ -513,6 +514,7 @@ router.patch('/issues/:id/upvote', auth, async (req, res) => {
 router.patch('/:id/upvote', auth, async (req, res) => {
   req.url = `/issues/${req.params.id}/upvote`;
   router.handle(req, res);
+  return;
 });
 
 router.patch('/issues/:id/mentor-signoff', auth, requireRole('mentor', 'admin'), async (req, res) => {

@@ -7,6 +7,13 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem('oaq_token'));
   const [loading, setLoading] = useState(true);
 
+  const logout = () => {
+    setUser(null);
+    setToken(null);
+    localStorage.removeItem('oaq_token');
+    localStorage.removeItem('oaq_user');
+  };
+
   useEffect(() => {
     const storedToken = localStorage.getItem('oaq_token');
     if (!storedToken) {
@@ -36,13 +43,6 @@ export function AuthProvider({ children }) {
     setToken(sessionToken);
     if (sessionToken) localStorage.setItem('oaq_token', sessionToken);
     localStorage.setItem('oaq_user', JSON.stringify(userData));
-  };
-
-  const logout = () => {
-    setUser(null);
-    setToken(null);
-    localStorage.removeItem('oaq_token');
-    localStorage.removeItem('oaq_user');
   };
 
   return (

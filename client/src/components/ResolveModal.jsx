@@ -26,8 +26,12 @@ export default function ResolveModal({ issue, onClose, onResolved }) {
     setLoading(true);
     try {
       const result = await api.post(`/oaq/issues/${issue._id}/resolve`, { answer });
-      if (result.code === 'FCFS_WIN') {
-        addToast('FCFS WIN — You resolved the issue first!');
+      if (result.code === 'AUTO_PROMOTED') {
+        addToast('FCFS WIN — Answer auto-promoted to resolved (+50 SP bonus)!');
+        onResolved(result.issue);
+        onClose();
+      } else if (result.code === 'SUBMITTED') {
+        addToast('Answer submitted — needs 3 upvotes to auto-resolve (+50 SP on promotion)');
         onResolved(result.issue);
         onClose();
       }

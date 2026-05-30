@@ -127,7 +127,7 @@ router.post('/issues', async (req, res) => {
 
 router.patch('/issues/:id', async (req, res) => {
   try {
-    const allowed = ['queryText', 'answer', 'categoryTag', 'status', 'priority', 'isBaseline', 'isPinned', 'isFeatured'];
+    const allowed = ['queryText', 'answer', 'categoryTag', 'status', 'priority', 'isPinned', 'isFeatured'];
     const updates = {};
     for (const key of allowed) {
       if (req.body[key] !== undefined) updates[key] = req.body[key];
@@ -181,29 +181,34 @@ router.patch('/issues/:id/feature', async (req, res) => {
 router.patch('/issues/:id/resolve', async (req, res) => {
   try {
     const { answer } = req.body;
-    const issue = await OAQIssue.findByIdAndUpdate(
+    const existing = await OAQIssue.findById(req.params.id);
+    if (!existing) return res.status(404).json({ message: 'Issue not found' });
+
+    const updates = {
+      status: 'Resolved',
+      answer: answer || existing.answer || 'Resolved by admin',
+      resolvedBy: req.user._id
+    };
+    if (answer) {
+      updates.$push = {
+        communityReplies: {
+          repliedBy: req.user._id,
+          replyText: answer,
+          isAcceptedFirst: true
+        }
+      };
+    }
+
+    const resolvedIssue = await OAQIssue.findByIdAndUpdate(
       req.params.id,
-      {
-        status: 'Resolved',
-        answer: answer || issue?.answer || 'Resolved by admin',
-        resolvedBy: req.user._id,
-        $push: answer ? {
-          communityReplies: {
-            repliedBy: req.user._id,
-            replyText: answer,
-            isAcceptedFirst: true
-          }
-        } : {}
-      },
+      updates,
       { new: true }
     ).populate('raisedBy', 'name').populate('resolvedBy', 'name');
 
-    if (!issue) return res.status(404).json({ message: 'Issue not found' });
-
     const io = req.app.get('io');
-    if (io) io.emit('issue:resolved', { issueId: issue._id, queryText: issue.queryText });
+    if (io) io.emit('issue:resolved', { issueId: resolvedIssue._id, queryText: resolvedIssue.queryText });
 
-    res.json(issue);
+    res.json(resolvedIssue);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
