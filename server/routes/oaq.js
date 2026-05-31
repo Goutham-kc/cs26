@@ -306,36 +306,69 @@ router.post('/issues', auth, async (req, res) => {
 
 router.post('/issues/:id/resolve', auth, async (req, res) => {
   const io = req.app.get('io');
+  const LOCK_TTL_MS = 30_000;
+
   try {
     const { answer } = req.body;
+    const now = new Date();
+    const lockExpiry = new Date(now.getTime() + LOCK_TTL_MS);
 
-    const issue = await OAQIssue.findById(req.params.id);
-    if (!issue) return res.status(404).json({ message: 'Issue not found' });
-    if (issue.status !== 'Open') return res.status(409).json({ code: 'ALREADY_RESOLVED', message: 'Issue already resolved' });
-
-    const audit = await yakshaAudit(answer || '', { queryText: issue.queryText });
-    if (!audit.passed) {
-      await awardSP(req.user._id, -20, `Yaksha rejection: ${audit.reason}`, req.params.id, 'PENALTY');
-      return res.status(400).json({ code: 'YAKSHA_REJECT', penalty: -20, reason: audit.reason });
-    }
-
-    const updatedIssue = await OAQIssue.findByIdAndUpdate(
-      issue._id,
+    const lockAcquired = await OAQIssue.findOneAndUpdate(
       {
-        $push: { communityReplies: { repliedBy: req.user._id, replyText: answer, isAcceptedFirst: false } }
+        _id: req.params.id,
+        status: 'Open',
+        $or: [
+          { lockedBy: null },
+          { lockedBy: { $exists: false } },
+          { lockExpiry: { $lt: now } }
+        ]
+      },
+      {
+        $set: { lockedBy: req.user._id, lockExpiry }
       },
       { new: true }
     );
-    await awardSP(req.user._id, 5, `Reply submitted: Issue #${issue.issueId}`, issue._id, 'QUERY_BONUS');
-    if (io) io.emit('issue:replied', { issueId: issue._id, queryText: issue.queryText });
 
-    const promoted = await checkAutoPromote(updatedIssue);
-    if (promoted) {
-      if (io) io.emit('issue:resolved', { issueId: issue._id, queryText: issue.queryText });
-      return res.json({ code: 'AUTO_PROMOTED', sp: 55, message: '3 upvotes reached — answer auto-promoted to resolved (+50 SP bonus)', issue: updatedIssue });
+    if (!lockAcquired) {
+      const existing = await OAQIssue.findById(req.params.id);
+      if (!existing) return res.status(404).json({ message: 'Issue not found' });
+      if (existing.status === 'Resolved') return res.status(409).json({ code: 'ALREADY_RESOLVED', message: 'Issue already resolved' });
+      return res.status(409).json({ code: 'COLLISION', message: 'Another resolver is currently submitting — try again in a moment' });
     }
 
-    res.json({ code: 'SUBMITTED', sp: 5, message: 'Answer submitted — needs 3 upvotes to auto-resolve (+50 SP on promotion)', issue: updatedIssue });
+    try {
+      const issue = lockAcquired;
+      const audit = await yakshaAudit(answer || '', { queryText: issue.queryText });
+
+      if (!audit.passed) {
+        await OAQIssue.findByIdAndUpdate(issue._id, { $set: { lockedBy: null, lockExpiry: null } });
+        await awardSP(req.user._id, -20, `Yaksha rejection: ${audit.reason}`, issue._id, 'PENALTY');
+        return res.status(400).json({ code: 'YAKSHA_REJECT', penalty: -20, reason: audit.reason });
+      }
+
+      const updatedIssue = await OAQIssue.findByIdAndUpdate(
+        issue._id,
+        {
+          $push: { communityReplies: { repliedBy: req.user._id, replyText: answer, isAcceptedFirst: false } },
+          $set: { lockedBy: null, lockExpiry: null }
+        },
+        { new: true }
+      );
+
+      await awardSP(req.user._id, 5, `Reply submitted: Issue #${issue.issueId}`, issue._id, 'QUERY_BONUS');
+      if (io) io.emit('issue:replied', { issueId: issue._id, queryText: issue.queryText });
+
+      const promoted = await checkAutoPromote(updatedIssue);
+      if (promoted) {
+        if (io) io.emit('issue:resolved', { issueId: issue._id, queryText: issue.queryText });
+        return res.json({ code: 'AUTO_PROMOTED', sp: 55, message: '3 upvotes reached — answer auto-promoted to resolved (+50 SP bonus)', issue: updatedIssue });
+      }
+
+      res.json({ code: 'SUBMITTED', sp: 5, message: 'Answer submitted — needs 3 upvotes to auto-resolve (+50 SP on promotion)', issue: updatedIssue });
+    } catch (err) {
+      await OAQIssue.findByIdAndUpdate(req.params.id, { $set: { lockedBy: null, lockExpiry: null } });
+      throw err;
+    }
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

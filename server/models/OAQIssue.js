@@ -29,6 +29,8 @@ const OAQIssueSchema = new Schema({
   upvoteCount:  { type: Number, default: 1 },
   resolvedBy:   { type: ObjectId, ref: 'User', default: null },
   raisedBy:     { type: ObjectId, ref: 'User', required: true },
+  lockedBy:     { type: ObjectId, ref: 'User', default: null },
+  lockExpiry:   { type: Date, default: null },
   communityReplies: [CommunityReplySchema]
 }, { timestamps: true });
 

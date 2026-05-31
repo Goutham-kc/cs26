@@ -36,12 +36,15 @@ export default function ResolveModal({ issue, onClose, onResolved }) {
         onClose();
       }
     } catch (err) {
-      if (err.message.includes('FCFS_COLLISION')) {
-        addToast('FCFS LOCKED — Another user resolved this first.');
-      } else if (err.message.includes('YAKSHA')) {
+      const code = err.response?.data?.code || err.message;
+      if (code === 'COLLISION' || code.includes('COLLISION')) {
+        addToast('COLLISION — Another user is currently resolving this. Try again shortly.');
+      } else if (code === 'ALREADY_RESOLVED' || code.includes('ALREADY_RESOLVED')) {
+        addToast('Already resolved by another user.');
+      } else if (code === 'YAKSHA_REJECT' || code.includes('YAKSHA')) {
         addToast('Yaksha rejected your answer. Revise and try again.');
       } else {
-        addToast(err.message);
+        addToast(err.response?.data?.message || err.message);
       }
     } finally {
       setLoading(false);
