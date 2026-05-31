@@ -5,9 +5,25 @@ Every query the team answers once becomes a permanent asset. Subsequent interns 
 
 ---
 
+## What's New in v2.0
+
+### React Router Navigation
+- URL-based routing with proper browser back/forward support
+- Routes: `/` (OAQ), `/threads`, `/tracker`, `/sp`, `/admin`
+- Last visited route persisted in localStorage
+- Shareable direct links to any page
+
+### Dark Mode
+- Fully implemented CSS variable-based theming
+- Toggle with `☀️`/`🌙` button in Topbar
+- WCAG AA compliant contrast ratios
+
+---
+
 ## Design Philosophy & Theme
 - **Strict Monochrome**: Sleek, premium dark/light mode styled entirely with CSS custom properties (variables) under WCAG AA compliance.
 - **Micro-animations**: Enhanced transition states, real-time Socket.io state synchronization, and audio voice playback (en-IN accent adapter pattern).
+- **Modal-based UI**: Consistent modal components replacing browser `prompt()` dialogs
 
 ---
 
@@ -20,16 +36,18 @@ Every query the team answers once becomes a permanent asset. Subsequent interns 
 ### Setup & Startup
 Initialize the entire project with a single command from the root directory:
 
-```bash
+```powershell
 # 1. Install all dependencies for both client and server
 npm run install:all
 
 # 2. Seed baseline sections, FAQ entries, and superadmin/mentor/intern accounts
 npm run seed
 
-# 3. Spin up both backend (port 5000) and frontend (port 5173) concurrently
+# 3. Spin up both backend (port 5001) and frontend (port 5173) concurrently
 npm run dev
 ```
+
+**Startup Issues?** See [STARTING.md](./STARTING.md) for troubleshooting.
 
 **Demo accounts seeded by default:**
 | Email | Password | Role | Access Level |
@@ -47,6 +65,10 @@ npm run dev
 oaq-system/
 ├── package.json                  # Root configurations and unified startup scripts
 │
+├── STARTING.md                   # Server startup guide and troubleshooting
+├── ERROR.md                      # Known issues and resolutions
+├── SUGGESTION.md                 # Planned feature enhancements
+│
 ├── server/                       # Express + MongoDB backend
 │   ├── config/db.js              # MongoDB database connection
 │   ├── models/
@@ -57,6 +79,7 @@ oaq-system/
 │   ├── routes/
 │   │   ├── auth.js               # User registration, login, and superadmin creation
 │   │   ├── oaq.js                # Search, upvoting, resolving, and flagging
+│   │   ├── threads.js            # Threaded discussion management
 │   │   ├── sections.js           # Sections management
 │   │   └── admin.js              # Stats overview, user adjustment, and activity logs
 │   ├── services/
@@ -64,15 +87,17 @@ oaq-system/
 │   │   └── escalation.js         # Event-driven priority escalation trigger
 │   ├── middleware/auth.js        # JWT gatekeeper and role-based guards
 │   ├── scripts/seed.js           # Baseline database seeder
-│   └── server.js                 # Express + Socket.io gateway endpoint
+│   └── index.js                  # Express + Socket.io gateway endpoint
 │
-└── client/                       # React frontend
+└── client/                       # React frontend (Vite)
     └── src/
         ├── context/
         │   ├── AuthContext.jsx   # JWT state management
         │   ├── SocketContext.jsx # Real-time Socket.io pub/sub provider
         │   ├── ToastContext.jsx  # Notification stack alerts
         │   └── ThemeContext.jsx  # Light/Dark mode dynamic variable provider
+        ├── hooks/
+        │   └── useModalCloser.js # Modal close event hook
         ├── services/
         │   ├── api.js            # Unified API fetch interface with interceptors
         │   └── audioController.js# Adaptation layer for en-IN Voice Synthesis
@@ -84,12 +109,43 @@ oaq-system/
         │   ├── TrendingFeed.jsx  # Top-15 query RSS feed with 5min auto-refresh
         │   ├── SectionFilter.jsx # Multi-select category predicate filters
         │   ├── AccordionDrawer.jsx# Inline drawers, upvotes, and recommendation rails
-        │   └── RecommendationRail.jsx# Collaborative search results (People Also Asked)
+        │   ├── RecommendationRail.jsx# Collaborative search results (People Also Asked)
+        │   ├── OpenQueryCard.jsx # FCFS query card with voting and answer submission
+        │   ├── RaiseQueryModal.jsx# Modal for raising new queries
+        │   ├── ResolveModal.jsx  # Resolution submission modal
+        │   ├── SharedModals.jsx  # Reusable ConfirmModal, InputModal, SPAdjustModal, ThreadCloseModal
+        │   └── YakshaViewport.jsx# Content quality audit display
         └── pages/
-            ├── HomePage.jsx      # OAQ main portal
+            ├── HomePage.jsx      # OAQ main portal with search and trending
             ├── TrackerPage.jsx   # Active FCFS board table
+            ├── ThreadsPage.jsx   # Threaded discussions
             └── AdminPage.jsx     # Moderation queues, stats, and SP adjustment
 ```
+
+---
+
+## Features Implemented
+
+### Core Features (13 Total)
+1. **13 Locked Onboarding FAQ Baseline Accordions** — Read-only onboarding FAQ center
+2. **FCFS Query Resolution Tracker** — Gamified dynamic tracking board
+3. **Automated Content Quality Auditor (Yaksha-mini)** — Auto-checks answer quality
+4. **Community Auto-Promotion System** — Peer-driven answer validation via upvotes
+5. **Auto-Escalation Threshold Hook** — 5 upvotes in 2hrs → High priority
+6. **Collaborative Recommendation Rail** — "People Also Asked" recommendations
+7. **RSS Trending Feed** — Top 15 resolved issues sorted by upvotes
+8. **Voice Search & Speech Playback** — Voice-controlled search and audio playback
+9. **Gamified SP & Wallet Subsystem** — Points, ledger, leaderboard, badges
+10. **Collaborative Nested Thread Discussions** — Forum-style threaded replies
+11. **Dynamic Section Filters** — Multi-select category filtering
+12. **Admin Moderation & Management Panel** — Dashboard for admins
+13. **Real-Time Sync Broadcaster** — Socket.io instant synchronization
+
+### Navigation & UI
+- **React Router** — URL-based navigation with browser history support
+- **Dark/Light Mode** — CSS variable-based theming
+- **Modal System** — ConfirmModal, InputModal, SPAdjustModal, ThreadCloseModal
+- **Toast Notifications** — In-app notification stack
 
 ---
 
@@ -112,11 +168,19 @@ oaq-system/
 - `PATCH /api/oaq/issues/:id/upvote` - Upvote a query (potentially triggers priority escalation).
 - `PATCH /api/oaq/issues/:id/mentor-signoff` - Mentor approval signature for resolutions.
 
-### 3. Section Categories (`/api/sections`)
+### 3. Threads (`/api/threads`)
+- `GET /api/threads` - Fetch all threads.
+- `POST /api/threads` - Create a new thread.
+- `GET /api/threads/:id` - Fetch single thread with nested replies.
+- `POST /api/threads/:id/reply` - Post a nested reply.
+- `PATCH /api/threads/:id/lock` - Lock/unlock thread (Mentor+).
+- `PATCH /api/threads/:id/resolve` - Mark thread resolved (OP or Mentor+).
+
+### 4. Section Categories (`/api/sections`)
 - `GET /api/sections` - Retrieve all category sections.
 - `POST /api/sections` - Create a new dynamic category section (Admin/Superadmin only).
 
-### 4. Admin & Moderation Operations (`/api/admin`)
+### 5. Admin & Moderation Operations (`/api/admin`)
 - `GET /api/admin/stats` - Fetch overall metrics (total issues, top holders, activity log).
 - `GET /api/admin/issues` - Paginated admin queries list with Pin/Feature/Delete triggers.
 - `GET /api/admin/users` - List all system accounts.
@@ -140,3 +204,20 @@ Our client features custom CSS variable injection mapping dynamically across Lig
 --color-invert-bg      /* Dynamic inversion for prominent buttons */
 --color-invert-text    /* High-contrast text on inverted backgrounds */
 ```
+
+---
+
+## Planned Features
+
+See [SUGGESTION.md](./SUGGESTION.md) for the complete feature backlog including:
+- Quick wins (under 30 min each)
+- Tier 1 Critical fixes
+- Tier 2 High priority improvements
+- Tier 3 Moderately important additions
+- Tier 4 Nice-to-have enhancements
+
+---
+
+## License
+
+Private — Vicharanashala Internal Use Only
