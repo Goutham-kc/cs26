@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import React from 'react';
+import { BrowserRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import SPDashboard from './components/SPDashboard';
 import LoginForm from './components/LoginForm';
 import Topbar from './components/Topbar';
@@ -9,31 +10,71 @@ import AdminPage from './pages/AdminPage';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import { ToastProvider } from './context/ToastContext';
-import { ThemeProvider, useTheme } from './context/ThemeContext';
+import { ThemeProvider } from './context/ThemeContext';
+
+function TopbarWrapper() {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const getViewFromPath = (pathname) => {
+    if (pathname === '/') return 'oaq';
+    return pathname.slice(1);
+  };
+
+  const currentView = getViewFromPath(location.pathname);
+
+  const handleNavigate = (view) => {
+    const path = view === 'oaq' ? '/' : `/${view}`;
+    localStorage.setItem('lastRoute', path);
+    navigate(path);
+  };
+
+  return <Topbar view={currentView} onViewChange={handleNavigate} />;
+}
 
 function Shell() {
-  const [view, setView] = useState('oaq');
+  const location = useLocation();
   const { user, login, loading } = useAuth();
+
+  React.useEffect(() => {
+    const path = location.pathname === '/' ? '/' : location.pathname;
+    localStorage.setItem('lastRoute', path);
+  }, [location.pathname]);
 
   if (loading) return null;
   if (!user) return <LoginForm onAuth={(nextUser) => login(nextUser)} />;
 
   return (
     <>
-      <Topbar view={view} onViewChange={setView} />
-      {view === 'oaq' && <HomePage />}
-      {view === 'threads' && <ThreadsPage />}
-      {view === 'tracker' && <TrackerPage />}
-      {view === 'sp' && (
-        <div style={{ padding: '32px 24px', minHeight: 'calc(100vh - 52px)', background: 'var(--color-bg)' }}>
-          <div style={{ maxWidth: 720, margin: '0 auto' }}>
-            <SPDashboard user={user} />
+      <TopbarWrapper />
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/threads" element={<ThreadsPage />} />
+        <Route path="/tracker" element={<TrackerPage />} />
+        <Route path="/sp" element={
+          <div style={{ padding: '32px 24px', minHeight: 'calc(100vh - 52px)', background: 'var(--color-bg)' }}>
+            <div style={{ maxWidth: 720, margin: '0 auto' }}>
+              <SPDashboard user={user} />
+            </div>
           </div>
-        </div>
-      )}
-      {view === 'admin' && <AdminPage />}
+        } />
+        <Route path="/admin" element={<AdminPage />} />
+      </Routes>
     </>
   );
+}
+
+function PersistRoute() {
+  const navigate = useNavigate();
+
+  React.useEffect(() => {
+    const saved = localStorage.getItem('lastRoute');
+    if (saved && window.location.pathname === '/') {
+      navigate(saved, { replace: true });
+    }
+  }, [navigate]);
+
+  return null;
 }
 
 export default function App() {
@@ -42,7 +83,10 @@ export default function App() {
       <AuthProvider>
         <SocketProvider>
           <ToastProvider>
-            <Shell />
+            <BrowserRouter>
+              <PersistRoute />
+              <Shell />
+            </BrowserRouter>
           </ToastProvider>
         </SocketProvider>
       </AuthProvider>

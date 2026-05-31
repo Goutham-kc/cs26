@@ -1,14 +1,30 @@
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 
 export default function Topbar({ view, onViewChange }) {
+  const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout } = useAuth();
   const { theme, toggle } = useTheme();
+
+  const getViewFromPath = (pathname) => {
+    if (pathname === '/') return 'oaq';
+    return pathname.slice(1);
+  };
+
+  const currentView = view || getViewFromPath(location.pathname);
+
+  const handleNavigate = (key) => {
+    const path = key === 'oaq' ? '/' : `/${key}`;
+    localStorage.setItem('lastRoute', path);
+    onViewChange(key);
+  };
 
   return (
     <header className="topbar" style={{ background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}>
       <div className="topbar-brand">
-        <button onClick={() => onViewChange('oaq')} style={{ color: 'var(--color-text-primary)', fontWeight: 700, letterSpacing: '0.08em' }}>
+        <button onClick={() => handleNavigate('oaq')} style={{ color: 'var(--color-text-primary)', fontWeight: 700, letterSpacing: '0.08em' }}>
           VICHARANASHALA <span>/</span> OAQ
         </button>
       </div>
@@ -26,8 +42,8 @@ export default function Topbar({ view, onViewChange }) {
           <button
             key={key}
             className="btn btn-sm"
-            style={{ background: view === key ? 'var(--color-invert-bg)' : 'transparent', color: view === key ? 'var(--color-invert-text)' : 'var(--color-text-secondary)', borderColor: 'var(--color-border)' }}
-            onClick={() => onViewChange(key)}
+            style={{ background: currentView === key ? 'var(--color-invert-bg)' : 'transparent', color: currentView === key ? 'var(--color-invert-text)' : 'var(--color-text-secondary)', borderColor: 'var(--color-border)' }}
+            onClick={() => handleNavigate(key)}
           >
             {label}
           </button>
