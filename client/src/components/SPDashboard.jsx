@@ -116,7 +116,7 @@ function LiveBanner({ message, onDismiss }) {
   );
 }
 
-// ── SP Trend Bar Chart ─────────────────────────────────────────────────────────
+// ── SP Trend Line Chart ─────────────────────────────────────────────────────────
 
 function TrendChart({ trend }) {
   if (!trend || trend.length === 0) {
@@ -126,18 +126,73 @@ function TrendChart({ trend }) {
       </div>
     );
   }
-  const max = Math.max(...trend.map(d => Math.abs(d.daily)), 1);
+
+  const W = 340, H = 120, PADL = 8, PADR = 8, PADT = 12, PADB = 28;
+  const chartW = W - PADL - PADR;
+  const chartH = H - PADT - PADB;
+
+  const values = trend.map(d => d.daily);
+  const minVal = Math.min(0, ...values);
+  const maxVal = Math.max(1, ...values);
+  const range = maxVal - minVal || 1;
+
+  const toX = (i) => PADL + (i / (trend.length - 1 || 1)) * chartW;
+  const toY = (v) => PADT + chartH - ((v - minVal) / range) * chartH;
+
+  const pathD = trend.map((d, i) => `${i === 0 ? 'M' : 'L'} ${toX(i)} ${toY(d.daily)}`).join(' ');
+
+  const areaD = `${pathD} L ${toX(trend.length - 1)} ${PADT + chartH} L ${toX(0)} ${PADT + chartH} Z`;
+
+  const posValues = values.filter(v => v > 0);
+  const negValues = values.filter(v => v < 0);
+  const maxAbs = Math.max(Math.abs(maxVal), Math.abs(minVal), 1);
+
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 80, overflow: 'hidden' }}>
-      {trend.map((d, i) => {
-        const h = Math.max(4, Math.abs((d.daily / max) * 80));
-        const isNeg = d.daily < 0;
-        return (
-          <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-            <div style={{ width: '100%', height: h, background: T.teal, borderRadius: '2px 2px 0 0' }} />
-          </div>
-        );
-      })}
+    <div style={{ position: 'relative' }}>
+      <svg width={W} height={H} style={{ display: 'block', overflow: 'visible' }}>
+        {/* Grid lines */}
+        {[0, 0.25, 0.5, 0.75, 1].map((frac) => {
+          const y = PADT + chartH * (1 - frac);
+          const val = Math.round(minVal + range * frac);
+          return (
+            <g key={frac}>
+              <line x1={PADL} y1={y} x2={W - PADR} y2={y} stroke={T.border} strokeWidth="0.5" strokeDasharray="3 3" />
+              <text x={PADL - 4} y={y + 3} textAnchor="end" fontSize={9} fill={T.muted} fontFamily={T.mono}>{val}</text>
+            </g>
+          );
+        })}
+
+        {/* Area fill */}
+        <path d={areaD} fill={T.teal} fillOpacity="0.08" />
+
+        {/* Line */}
+        <path d={pathD} fill="none" stroke={T.teal} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+
+        {/* Positive dots */}
+        {trend.map((d, i) => {
+          if (d.daily <= 0) return null;
+          return (
+            <circle key={i} cx={toX(i)} cy={toY(d.daily)} r="3" fill={T.teal} stroke={T.bg} strokeWidth="1.5" />
+          );
+        })}
+
+        {/* Negative dots */}
+        {trend.map((d, i) => {
+          if (d.daily >= 0) return null;
+          return (
+            <circle key={i} cx={toX(i)} cy={toY(d.daily)} r="3" fill={T.red} stroke={T.bg} strokeWidth="1.5" />
+          );
+        })}
+      </svg>
+
+      {/* Date labels */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, padding: `0 ${PADL}px` }}>
+        {trend.filter((_, i) => i === 0 || i === Math.floor(trend.length / 2) || i === trend.length - 1).map((d, i, arr) => (
+          <span key={i} style={{ fontSize: 9, color: T.muted, fontFamily: T.mono }}>
+            {new Date(d._id).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
