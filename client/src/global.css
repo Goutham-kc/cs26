@@ -466,6 +466,12 @@ a { color: inherit; text-decoration: none; }
 @keyframes slideIn {
   from { transform: translateX(40px); opacity: 0; }
   to   { transform: translateX(0); opacity: 1; }
+
+.toast-error   { border-left: 3px solid var(--color-red); }
+.toast-success { border-left: 3px solid var(--color-teal); }
+.toast-warning { border-left: 3px solid #f59e0b; }
+.toast-info    { border-left: 3px solid var(--color-border); }
+.toast-mention { border-left: 3px solid #8B5CF6; }
 }
 
 /* ─── Misc ────────────────────────────────────────────────────────────────── */
@@ -530,4 +536,43 @@ a { color: inherit; text-decoration: none; }
   gap: 12px;
   color: var(--color-text-muted);
   font-size: 12px;
+}
+
+/* ─── Mobile Responsive ───────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .topbar {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 8px 12px;
+    gap: 8px;
+  }
+  .topbar-actions {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .topbar-user { display: none; }
+
+  .main-content { padding: 16px 12px; }
+
+  .modal { max-width: 95vw; padding: 16px; }
+  .modal-overlay { align-items: flex-end; padding: 0; }
+
+  .tracker-table { display: block; overflow-x: auto; }
+  .tracker-table th, .tracker-table td { white-space: nowrap; }
+
+  .accordion-trigger .tag { display: none; }
+  .accordion-trigger .rank { min-width: 20px; }
+
+  .tabs { overflow-x: auto; flex-wrap: nowrap; white-space: nowrap; }
+  .tabs::-webkit-scrollbar { display: none; }
+
+  .search-wrap { flex-direction: column; }
+  .search-wrap .btn { width: 100%; justify-content: center; }
+}
+
+@media (max-width: 480px) {
+  .main-content { padding: 12px 8px; }
+  .toast-stack { bottom: 12px; right: 12px; left: 12px; }
+  .toast { font-size: 11px; }
+  .page-loading { padding: 40px 16px; }
 }

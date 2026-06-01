@@ -544,6 +544,27 @@ router.patch('/issues/:id/upvote', auth, async (req, res) => {
   }
 });
 
+router.patch('/issues/:id/duplicate', auth, async (req, res) => {
+  const io = req.app.get('io');
+  try {
+    const { duplicateOfId } = req.body;
+    if (!duplicateOfId) return res.status(400).json({ message: 'duplicateOfId required' });
+
+    const duplicateOf = await OAQIssue.findById(duplicateOfId);
+    if (!duplicateOf) return res.status(404).json({ message: 'Target issue not found' });
+
+    const issue = await OAQIssue.findByIdAndUpdate(
+      req.params.id,
+      { status: 'Duplicate', duplicateOf: duplicateOfId },
+      { new: true }
+    );
+    if (io) io.emit('issue:marked-duplicate', { issueId: issue._id, duplicateOfId });
+    res.json(issue);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 router.patch('/:id/upvote', auth, async (req, res) => {
   req.url = `/issues/${req.params.id}/upvote`;
   router.handle(req, res);

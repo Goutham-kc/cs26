@@ -20,7 +20,7 @@ const OAQIssueSchema = new Schema({
   answer:       { type: String, default: '' },
   bestReplyId:  { type: ObjectId, default: null },
   categoryTag:  { type: String, required: true },
-  status:       { type: String, enum: ['Open', 'Resolved'], default: 'Open' },
+  status:       { type: String, enum: ['Open', 'Resolved', 'Duplicate'], default: 'Open' },
   priority:     { type: String, enum: ['NORMAL', 'HIGH'], default: 'NORMAL' },
   escalated:    { type: Boolean, default: false },
   isBaseline:   { type: Boolean, default: false },
@@ -31,6 +31,7 @@ const OAQIssueSchema = new Schema({
   raisedBy:     { type: ObjectId, ref: 'User', required: true },
   lockedBy:     { type: ObjectId, ref: 'User', default: null },
   lockExpiry:   { type: Date, default: null },
+  duplicateOf:  { type: ObjectId, ref: 'OAQIssue', default: null },
   communityReplies: [CommunityReplySchema]
 }, { timestamps: true });
 

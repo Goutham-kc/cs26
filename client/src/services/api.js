@@ -13,6 +13,12 @@ function authHeaders() {
 
 async function handleResponse(res) {
   const data = await res.json().catch(() => ({}));
+  if (res.status === 401) {
+    localStorage.removeItem('oaq_token');
+    localStorage.removeItem('oaq_user');
+    window.dispatchEvent(new CustomEvent('oaq:session-expired', { detail: data }));
+    throw Object.assign(new Error('Session expired'), { code: 'SESSION_EXPIRED' });
+  }
   if (!res.ok) throw new Error(data.reason || data.message || data.code || 'Request failed');
   return data;
 }
@@ -83,7 +89,10 @@ export async function upvoteIssue(issueId) {
 }
 
 export const admin = {
-  getStats: () => api.get('/admin/stats'),
+  getStats: (range = 'all') => {
+    const q = range !== 'all' ? `?range=${range}` : '';
+    return api.get(`/admin/stats${q}`);
+  },
   getIssues: (params = {}) => {
     const q = new URLSearchParams(params).toString();
     return api.get(`/admin/issues?${q}`);
@@ -107,6 +116,10 @@ export const admin = {
   getModerationQueue: () => api.get('/oaq/moderation-queue'),
 };
 
+export const users = {
+  getProfile: (id) => api.get(`/users/${id}/stats`),
+};
+
 export const oaq = {
   seedBaseline: () => api.post('/oaq/seed-baseline'),
   voteReply: (issueId, replyId, type) => api.patch(`/oaq/issues/${issueId}/replies/${replyId}/vote`, { type }),
@@ -115,6 +128,7 @@ export const oaq = {
   getModerationQueue: () => api.get('/oaq/moderation-queue'),
   getOpenQueries: () => api.get('/oaq/open-queries'),
   submitReply: (issueId, answer) => api.post(`/oaq/issues/${issueId}/community-reply`, { answer }),
+  markDuplicate: (issueId, duplicateOfId) => api.patch(`/oaq/issues/${issueId}/duplicate`, { duplicateOfId }),
 };
 
 export const threads = {

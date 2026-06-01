@@ -22,6 +22,11 @@ function timeAgo(dateStr) {
   return `${Math.floor(h / 24)}d ago`;
 }
 
+function isStale(issue) {
+  const hoursSinceUpdate = (Date.now() - new Date(issue.updatedAt || issue.createdAt).getTime()) / 3600000;
+  return hoursSinceUpdate > 48 && (!issue.communityReplies || issue.communityReplies.length === 0);
+}
+
 export default function TrackerPage() {
   const [issues, setIssues]     = useState([]);
   const [loading, setLoading]   = useState(true);
@@ -121,6 +126,7 @@ export default function TrackerPage() {
 
         {!loading && filtered.length === 0 && (
           <div className="empty-state">
+            <div style={{ fontSize: 36, marginBottom: 8 }}>📋</div>
             <strong>No issues here</strong>
             {filter === 'open' ? 'All queries have been resolved.' : 'Nothing to display.'}
           </div>
@@ -142,8 +148,11 @@ export default function TrackerPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(issue => (
-                <tr key={issue._id}>
+              {filtered.map(issue => {
+                const stale = isStale(issue);
+                const rowStyle = stale ? { background: '#FFF7ED', borderLeft: '3px solid #F97316' } : {};
+                return (
+                  <tr key={issue._id} style={rowStyle}>
                   <td className="issue-id">#{issue.issueId}</td>
                   <td style={{ maxWidth: 300 }}>
                     <span style={{ fontSize: 12, lineHeight: 1.5 }}>{issue.queryText}</span>
@@ -197,7 +206,8 @@ export default function TrackerPage() {
                     </div>
                   </td>
                 </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
         )}
