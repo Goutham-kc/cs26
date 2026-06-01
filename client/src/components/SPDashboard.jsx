@@ -127,7 +127,8 @@ function TrendChart({ trend }) {
     );
   }
 
-  const W = 340, H = 120, PADL = 8, PADR = 8, PADT = 12, PADB = 28;
+  const H = 100, PADL = 4, PADR = 4, PADT = 8, PADB = 24;
+  const W = 320;
   const chartW = W - PADL - PADR;
   const chartH = H - PADT - PADB;
 
@@ -143,21 +144,17 @@ function TrendChart({ trend }) {
 
   const areaD = `${pathD} L ${toX(trend.length - 1)} ${PADT + chartH} L ${toX(0)} ${PADT + chartH} Z`;
 
-  const posValues = values.filter(v => v > 0);
-  const negValues = values.filter(v => v < 0);
-  const maxAbs = Math.max(Math.abs(maxVal), Math.abs(minVal), 1);
-
   return (
-    <div style={{ position: 'relative' }}>
-      <svg width={W} height={H} style={{ display: 'block', overflow: 'visible' }}>
+    <div style={{ position: 'relative', width: '100%' }}>
+      <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ display: 'block' }}>
         {/* Grid lines */}
-        {[0, 0.25, 0.5, 0.75, 1].map((frac) => {
+        {[0, 0.5, 1].map((frac) => {
           const y = PADT + chartH * (1 - frac);
           const val = Math.round(minVal + range * frac);
           return (
             <g key={frac}>
               <line x1={PADL} y1={y} x2={W - PADR} y2={y} stroke={T.border} strokeWidth="0.5" strokeDasharray="3 3" />
-              <text x={PADL - 4} y={y + 3} textAnchor="end" fontSize={9} fill={T.muted} fontFamily={T.mono}>{val}</text>
+              <text x={PADL - 2} y={y + 3} textAnchor="end" fontSize={8} fill={T.muted} fontFamily={T.mono}>{val}</text>
             </g>
           );
         })}
@@ -166,13 +163,13 @@ function TrendChart({ trend }) {
         <path d={areaD} fill={T.teal} fillOpacity="0.08" />
 
         {/* Line */}
-        <path d={pathD} fill="none" stroke={T.teal} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+        <path d={pathD} fill="none" stroke={T.teal} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
 
         {/* Positive dots */}
         {trend.map((d, i) => {
           if (d.daily <= 0) return null;
           return (
-            <circle key={i} cx={toX(i)} cy={toY(d.daily)} r="3" fill={T.teal} stroke={T.bg} strokeWidth="1.5" />
+            <circle key={i} cx={toX(i)} cy={toY(d.daily)} r="2.5" fill={T.teal} stroke={T.bg} strokeWidth="1" />
           );
         })}
 
@@ -180,15 +177,15 @@ function TrendChart({ trend }) {
         {trend.map((d, i) => {
           if (d.daily >= 0) return null;
           return (
-            <circle key={i} cx={toX(i)} cy={toY(d.daily)} r="3" fill={T.red} stroke={T.bg} strokeWidth="1.5" />
+            <circle key={i} cx={toX(i)} cy={toY(d.daily)} r="2.5" fill={T.red} stroke={T.bg} strokeWidth="1" />
           );
         })}
       </svg>
 
       {/* Date labels */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, padding: `0 ${PADL}px` }}>
-        {trend.filter((_, i) => i === 0 || i === Math.floor(trend.length / 2) || i === trend.length - 1).map((d, i, arr) => (
-          <span key={i} style={{ fontSize: 9, color: T.muted, fontFamily: T.mono }}>
+        {trend.filter((_, i) => i === 0 || i === Math.floor(trend.length / 2) || i === trend.length - 1).map((d, i) => (
+          <span key={i} style={{ fontSize: 8, color: T.muted, fontFamily: T.mono }}>
             {new Date(d._id).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
           </span>
         ))}
@@ -201,12 +198,12 @@ function TrendChart({ trend }) {
 
 function BadgeCard({ badges = [], spToTop50 }) {
   return (
-    <div style={{ border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '20px 20px' }}>
-      <div style={{ fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: T.muted, marginBottom: 14 }}>BADGES</div>
+    <div>
+      <div style={{ fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: T.muted, marginBottom: 14 }}>BADGES</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {badges.map((b, i) => (
           <span key={i} style={{
-            display: 'inline-block', fontSize: 11, fontWeight: 600,
+            display: 'inline-block', fontSize: 10, fontWeight: 600,
             padding: '4px 12px', borderRadius: 20,
             background: b.color === '#0D9488' ? T.tealLight : T.navyLight,
             color: b.color === '#0D9488' ? T.tealDark : T.navyDark,
@@ -214,7 +211,7 @@ function BadgeCard({ badges = [], spToTop50 }) {
           }}>{b.label}</span>
         ))}
         {badges.length === 0 && (
-          <span style={{ fontSize: 11, color: T.muted }}>No badges yet</span>
+          <span style={{ fontSize: 10, color: T.muted }}>No badges yet</span>
         )}
       </div>
       {spToTop50 > 0 && (
@@ -238,11 +235,11 @@ function WhatToDoNext({ spToTop50, total }) {
   items.push('Upvote helpful issues — authors earn +5 SP on escalation');
 
   return (
-    <div style={{ border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '20px 20px' }}>
-      <div style={{ fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: T.muted, marginBottom: 14 }}>WHAT TO DO NEXT</div>
-      <ul style={{ margin: 0, padding: '0 0 0 18px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+    <div>
+      <div style={{ fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: T.muted, marginBottom: 14 }}>WHAT TO DO NEXT</div>
+      <ul style={{ margin: 0, padding: '0 0 0 18px', display: 'flex', flexDirection: 'column', gap: 6 }}>
         {items.map((item, i) => (
-          <li key={i} style={{ fontSize: 12, color: T.secondary, fontFamily: T.mono, lineHeight: 1.5 }}>{item}</li>
+          <li key={i} style={{ fontSize: 10, color: T.secondary, fontFamily: T.mono, lineHeight: 1.5 }}>{item}</li>
         ))}
       </ul>
     </div>
@@ -415,11 +412,11 @@ export default function SPDashboard({ user }) {
           </div>
 
           {/* SP Balance + metrics row */}
-          <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: 16, marginBottom: 24 }}>
-            {/* Black SP Balance card */}
-            <div style={{ background: T.invBg, borderRadius: T.radius, padding: '20px 20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+            {/* Left side: SP Balance card */}
+            <div style={{ background: T.invBg, borderRadius: T.radius, padding: '24px 24px' }}>
               <div style={{ fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: T.muted, marginBottom: 8 }}>SP BALANCE</div>
-              <div style={{ fontSize: 40, fontWeight: 700, color: T.invText, lineHeight: 1 }}>{total}</div>
+              <div style={{ fontSize: 48, fontWeight: 700, color: T.invText, lineHeight: 1 }}>{total}</div>
               <div style={{ fontSize: 10, color: T.muted, marginTop: 8 }}>Running total</div>
             </div>
 
@@ -433,7 +430,7 @@ export default function SPDashboard({ user }) {
               </div>
 
               {/* SP Breakdown bars */}
-              <div style={{ border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 20px' }}>
+              <div style={{ border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 20px', flex: 1 }}>
                 <div style={{ fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: T.muted, marginBottom: 12 }}>SP BREAKDOWN</div>
                 {[
                   { label: 'FCFS Wins',         value: bd.FCFS_WIN || 0,         max: Math.max(total, 1), color: T.teal },
@@ -456,35 +453,42 @@ export default function SPDashboard({ user }) {
           </div>
 
           {/* Badges + What To Do Next row */}
-          <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: 16, marginBottom: 24 }}>
-            <BadgeCard badges={wallet?.badges || []} spToTop50={wallet?.spToTop50 || 0} />
-            <WhatToDoNext spToTop50={wallet?.spToTop50 || 0} total={total} />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+            <div style={{ border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '20px 20px', display: 'flex', flexDirection: 'column' }}>
+              <BadgeCard badges={wallet?.badges || []} spToTop50={wallet?.spToTop50 || 0} />
+            </div>
+            <div style={{ border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '20px 20px', display: 'flex', flexDirection: 'column' }}>
+              <WhatToDoNext spToTop50={wallet?.spToTop50 || 0} total={total} />
+            </div>
           </div>
 
           {/* SP Trend + Recent Activity row */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
             {/* SP Trend */}
-            <div style={{ border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '20px 20px' }}>
-              <div style={{ fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: T.muted, marginBottom: 16 }}>SP TREND</div>
-              <TrendChart trend={wallet?.trend || []} />
+            <div style={{ border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '20px 20px', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: T.muted, marginBottom: 16 }}>SP TREND (14 DAYS)</div>
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <TrendChart trend={wallet?.trend || []} />
+              </div>
             </div>
 
             {/* Recent Activity */}
-            <div style={{ border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '20px 20px' }}>
-              <div style={{ fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: T.muted, marginBottom: 16 }}>RECENT ACTIVITY</div>
-              {ledger.entries.slice(0, 5).map((entry, i) => {
-                const { date } = fmt(entry.createdAt);
-                return (
-                  <div key={entry._id || i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, paddingBottom: 10, borderBottom: `0.5px solid ${T.surface}`, marginBottom: 10 }}>
-                    <Badge event={entry.event} />
-                    <div style={{ flex: 1, fontSize: 11, color: T.secondary, lineHeight: 1.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.reason}</div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: entry.delta > 0 ? T.teal : T.red, minWidth: 32, textAlign: 'right' }}>
-                      {entry.delta > 0 ? `+${entry.delta}` : entry.delta}
+            <div style={{ border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '20px 20px', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: T.muted, marginBottom: 16 }}>RECENT ACTIVITY</div>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
+                {ledger.entries.slice(0, 5).map((entry, i) => {
+                  return (
+                    <div key={entry._id || i} style={{ display: 'flex', alignItems: 'center', gap: 10, paddingBottom: 10, borderBottom: `0.5px solid ${T.surface}`, marginBottom: 10 }}>
+                      <Badge event={entry.event} />
+                      <div style={{ flex: 1, fontSize: 10, color: T.secondary, lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.reason}</div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: entry.delta > 0 ? T.teal : T.red, minWidth: 32, textAlign: 'right', fontFamily: T.mono }}>
+                        {entry.delta > 0 ? `+${entry.delta}` : entry.delta}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-              <button onClick={() => setTab('ledger')} style={{ background: 'none', border: 'none', fontSize: 10, color: T.muted, cursor: 'pointer', letterSpacing: '0.1em', textTransform: 'uppercase', padding: 0, fontFamily: T.mono }}>
+                  );
+                })}
+              </div>
+              <button onClick={() => setTab('ledger')} style={{ background: 'none', border: 'none', fontSize: 9, color: T.muted, cursor: 'pointer', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '8px 0 0', fontFamily: T.mono }}>
                 VIEW FULL LEDGER →
               </button>
             </div>
