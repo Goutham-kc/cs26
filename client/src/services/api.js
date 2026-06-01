@@ -66,6 +66,10 @@ export async function getLeaderboard(limit = 10) {
   return api.get(`/sp/leaderboard?limit=${limit}`);
 }
 
+export async function getMyIssues() {
+  return api.get('/sp/my-issues');
+}
+
 export async function getTrending() {
   return api.get('/oaq/trending');
 }

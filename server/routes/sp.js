@@ -2,6 +2,7 @@ const express   = require('express');
 const auth      = require('../middleware/auth');
 const User      = require('../models/User');
 const SPLedger  = require('../models/SPLedger');
+const OAQIssue  = require('../models/OAQIssue');
 const router    = express.Router();
 
 // GET /api/sp/wallet
@@ -99,7 +100,36 @@ router.get('/ledger', auth, async (req, res) => {
   }
 });
 
-// GET /api/sp/leaderboard?limit=10
+// GET /api/sp/my-issues
+// Returns current user's query activity stats
+router.get('/my-issues', auth, async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const [raised, resolved, pendingReview] = await Promise.all([
+      OAQIssue.countDocuments({ raisedBy: userId }),
+      OAQIssue.countDocuments({ resolvedBy: userId }),
+      OAQIssue.countDocuments({
+        communityReplies: { $elemMatch: { repliedBy: userId, isPromoted: false, isAcceptedFirst: false } },
+        status: 'Open'
+      })
+    ]);
+
+    const totalUpvotesReceived = await OAQIssue.aggregate([
+      { $match: { raisedBy: userId } },
+      { $group: { _id: null, total: { $sum: '$upvoteCount' } } }
+    ]);
+
+    res.json({
+      raised,
+      resolved,
+      pendingReview,
+      totalUpvotesReceived: totalUpvotesReceived[0]?.total || 0
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 // Top SP holders across all interns
 router.get('/leaderboard', auth, async (req, res) => {
   try {

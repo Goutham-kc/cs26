@@ -3,10 +3,35 @@ import TrendingFeed from '../components/TrendingFeed';
 import BaselineOAQ from '../components/BaselineOAQ';
 import SectionFilter from '../components/SectionFilter';
 import RaiseQueryModal from '../components/RaiseQueryModal';
-import { api, oaq } from '../services/api';
+import { api, oaq, getMyIssues } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import { useToast } from '../context/ToastContext';
+
+function ActivitySummary({ stats }) {
+  if (!stats) return null;
+  const items = [
+    { label: 'Queries Raised', value: stats.raised },
+    { label: 'Resolved (FCFS Wins)', value: stats.resolved },
+    { label: 'Pending Review', value: stats.pendingReview },
+    { label: 'Upvotes Received', value: stats.totalUpvotesReceived },
+  ];
+  return (
+    <div style={{
+      display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12,
+      marginBottom: 24, padding: '16px 20px',
+      background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+      borderRadius: 'var(--radius)'
+    }}>
+      {items.map(it => (
+        <div key={it.label} style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 22, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--color-text-primary)' }}>{it.value}</div>
+          <div style={{ fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>{it.label}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function HomePage() {
   const [tab, setTab]           = useState('baseline');
@@ -17,6 +42,7 @@ export default function HomePage() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [showRaise, setShowRaise] = useState(false);
   const [recentlyCreated, setRecentlyCreated] = useState(null);
+  const [myStats, setMyStats] = useState(null);
   const { user }  = useAuth();
   const { socket } = useSocket();
   const { addToast } = useToast();
@@ -48,6 +74,11 @@ export default function HomePage() {
   useEffect(() => {
     if (tab === 'open') loadOpenQueries();
   }, [tab]);
+
+  useEffect(() => {
+    if (!user) return;
+    getMyIssues().then(setMyStats).catch(() => {});
+  }, [user]);
 
   // Debounced search
   useEffect(() => {
@@ -100,6 +131,9 @@ export default function HomePage() {
 
         {/* Section filter */}
         <SectionFilter onChange={setSections} />
+
+        {/* Activity Summary — only show when not searching */}
+        {user && !searchQ.trim() && <ActivitySummary stats={myStats} />}
 
         {/* Search results */}
         {searchQ.trim() && (

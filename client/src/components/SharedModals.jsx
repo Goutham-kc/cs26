@@ -1,8 +1,6 @@
 import { useState } from 'react';
-import { useModalCloser } from '../hooks/useModalCloser';
 
 export function ConfirmModal({ title, message, confirmLabel = 'Confirm', danger = false, onConfirm, onClose }) {
-  useModalCloser(onClose);
 
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -32,7 +30,6 @@ export function ConfirmModal({ title, message, confirmLabel = 'Confirm', danger 
 
 export function InputModal({ title, label, placeholder, defaultValue = '', type = 'text', onSubmit, onClose }) {
   const [value, setValue] = useState(defaultValue);
-  useModalCloser(onClose);
 
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -70,7 +67,6 @@ export function InputModal({ title, label, placeholder, defaultValue = '', type 
 
 export function SPAdjustModal({ userName, currentSp, onSubmit, onClose }) {
   const [sp, setSp] = useState(String(currentSp));
-  useModalCloser(onClose);
 
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -108,7 +104,6 @@ export function SPAdjustModal({ userName, currentSp, onSubmit, onClose }) {
 
 export function ThreadCloseModal({ threadTitle, threadCreatorName, onSubmit, onClose }) {
   const [spReward, setSpReward] = useState('');
-  useModalCloser(onClose);
 
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
