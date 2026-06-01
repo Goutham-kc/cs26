@@ -128,7 +128,15 @@ router.post('/:id/reply', auth, async (req, res) => {
       { new: true }
     ).populate('threadReplies.repliedBy', 'name role');
 
-    if (io) io.emit('thread:replied', { threadId: thread._id });
+    const newReply = updatedThread.threadReplies[updatedThread.threadReplies.length - 1];
+    if (io) io.emit('thread:replied', {
+      threadId: thread._id,
+      replyId: newReply._id,
+      repliedBy: newReply.repliedBy,
+      mentions: newReply.mentions || [],
+      replyText: newReply.replyText,
+      threadTitle: thread.title,
+    });
 
     res.json(updatedThread);
   } catch (err) {

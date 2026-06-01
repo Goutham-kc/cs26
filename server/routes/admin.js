@@ -12,6 +12,15 @@ router.use(auth, requireRole('admin', 'superadmin'));
 
 router.get('/stats', async (req, res) => {
   try {
+    const { range = 'all' } = req.query;
+    const since = range === '7d'
+      ? new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+      : range === '30d'
+      ? new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+      : null;
+
+    const baseFilter = since ? { createdAt: { $gte: since } } : {};
+
     const [
       totalIssues,
       openIssues,
@@ -23,15 +32,15 @@ router.get('/stats', async (req, res) => {
       featuredIssues,
       recentLedger
     ] = await Promise.all([
-      OAQIssue.countDocuments(),
-      OAQIssue.countDocuments({ status: 'Open' }),
-      OAQIssue.countDocuments({ status: 'Resolved' }),
-      User.countDocuments(),
-      User.countDocuments({ role: 'mentor' }),
-      User.countDocuments({ role: 'admin' }),
-      OAQIssue.countDocuments({ isPinned: true }),
-      OAQIssue.countDocuments({ isFeatured: true }),
-      SPLedger.find().sort({ createdAt: -1 }).limit(10)
+      OAQIssue.countDocuments(since ? { ...baseFilter } : {}),
+      OAQIssue.countDocuments({ status: 'Open', ...(since ? { createdAt: { $gte: since } } : {}) }),
+      OAQIssue.countDocuments({ status: 'Resolved', ...(since ? { createdAt: { $gte: since } } : {}) }),
+      User.countDocuments(since ? { ...baseFilter } : {}),
+      User.countDocuments({ role: 'mentor', ...(since ? { createdAt: { $gte: since } } : {}) }),
+      User.countDocuments({ role: 'admin', ...(since ? { createdAt: { $gte: since } } : {}) }),
+      OAQIssue.countDocuments({ isPinned: true, ...(since ? { createdAt: { $gte: since } } : {}) }),
+      OAQIssue.countDocuments({ isFeatured: true, ...(since ? { createdAt: { $gte: since } } : {}) }),
+      SPLedger.find(since ? { createdAt: { $gte: since } } : {}).sort({ createdAt: -1 }).limit(10)
         .populate('userId', 'name email').populate('issueId', 'queryText')
     ]);
 

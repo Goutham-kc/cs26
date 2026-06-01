@@ -22,29 +22,29 @@ export default function ResolveModal({ issue, onClose, onResolved }) {
   const preview = answer.length > 0 ? localYakshaCheck(answer) : null;
 
   const handleSubmit = async () => {
-    if (!answer.trim()) { addToast('Write an answer first'); return; }
+    if (!answer.trim()) { addToast('Write an answer first', { type: 'warning' }); return; }
     setLoading(true);
     try {
       const result = await api.post(`/oaq/issues/${issue._id}/resolve`, { answer });
       if (result.code === 'AUTO_PROMOTED') {
-        addToast('FCFS WIN — Answer auto-promoted to resolved (+50 SP bonus)!');
+        addToast('FCFS WIN — Answer auto-promoted to resolved (+50 SP bonus)!', { type: 'success' });
         onResolved(result.issue);
         onClose();
       } else if (result.code === 'SUBMITTED') {
-        addToast('Answer submitted — needs 3 upvotes to auto-resolve (+50 SP on promotion)');
+        addToast('Answer submitted — needs 3 upvotes to auto-resolve (+50 SP on promotion)', { type: 'info' });
         onResolved(result.issue);
         onClose();
       }
     } catch (err) {
       const code = err.response?.data?.code || err.message;
       if (code === 'COLLISION' || code.includes('COLLISION')) {
-        addToast('COLLISION — Another user is currently resolving this. Try again shortly.');
+        addToast('COLLISION — Another user is currently resolving this. Try again shortly.', { type: 'warning' });
       } else if (code === 'ALREADY_RESOLVED' || code.includes('ALREADY_RESOLVED')) {
-        addToast('Already resolved by another user.');
+        addToast('Already resolved by another user.', { type: 'info' });
       } else if (code === 'YAKSHA_REJECT' || code.includes('YAKSHA')) {
-        addToast('Yaksha rejected your answer. Revise and try again.');
+        addToast('Yaksha rejected your answer. Revise and try again.', { type: 'error' });
       } else {
-        addToast(err.response?.data?.message || err.message);
+        addToast(err.response?.data?.message || err.message, { type: 'error' });
       }
     } finally {
       setLoading(false);

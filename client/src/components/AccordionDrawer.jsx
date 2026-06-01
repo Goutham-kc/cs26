@@ -46,8 +46,17 @@ export default function AccordionDrawer({ entry, isOpen, sessionHistory, onViewR
       setUpvotes(updated.upvoteCount);
       setUpvoted(true);
     } catch (err) {
-      addToast(err.message);
+      addToast(err.message, { type: 'error' });
     }
+  };
+
+  const handleCopy = () => {
+    if (!entry.answer) return;
+    navigator.clipboard.writeText(entry.answer).then(() => {
+      addToast('Answer copied!', { type: 'success' });
+    }).catch(() => {
+      addToast('Copy failed', { type: 'error' });
+    });
   };
 
   if (!isOpen) return null;
@@ -70,6 +79,11 @@ export default function AccordionDrawer({ entry, isOpen, sessionHistory, onViewR
         {entry.answer && (
           <button className={`voice-btn ${voiceActive ? 'active' : ''}`} onClick={handleVoice}>
             {voiceActive ? '◼ Stop' : '▶ Listen'} (en-IN)
+          </button>
+        )}
+        {entry.answer && (
+          <button className="upvote-btn" onClick={handleCopy} title="Copy answer">
+            📋 Copy
           </button>
         )}
         {entry.categoryTag && (

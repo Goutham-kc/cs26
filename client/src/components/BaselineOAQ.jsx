@@ -23,6 +23,7 @@ export default function BaselineOAQ({ filteredSections }) {
   const [loading,     setLoading]     = useState(true);
   const [sessionHistory, setSessionHistory] = useState([]);
   const [sort,        setSort]        = useState('id');
+  const [recEntry,    setRecEntry]    = useState(null);
 
   useEffect(() => {
     api.get('/oaq/baseline')
@@ -43,6 +44,7 @@ export default function BaselineOAQ({ filteredSections }) {
   })();
 
   const handleOpen = (i, id) => {
+    setRecEntry(null);
     const next = open === i ? null : i;
     setOpen(next);
     if (next !== null) {
@@ -50,7 +52,14 @@ export default function BaselineOAQ({ filteredSections }) {
     }
   };
 
-  
+  const handleViewRecRelated = async (relatedId) => {
+    try {
+      const full = await api.get(`/oaq/${relatedId}`);
+      setRecEntry(full);
+      setSessionHistory(prev => [...new Set([...prev, full._id])]);
+      setOpen(-1);
+    } catch {}
+  };
 
   if (loading) return (
     <div className="page-loading"><div className="spinner" /> Loading baseline OAQ…</div>
@@ -58,6 +67,7 @@ export default function BaselineOAQ({ filteredSections }) {
 
   if (visible.length === 0) return (
     <div className="empty-state">
+      <div style={{ fontSize: 36, marginBottom: 8 }}>📂</div>
       <strong>No entries for selected filters</strong>
       Clear section filters to see all 13 baseline entries.
     </div>
@@ -93,10 +103,10 @@ export default function BaselineOAQ({ filteredSections }) {
               <span className="toggle">{open === i ? '−' : '+'}</span>
             </button>
             <AccordionDrawer
-              entry={entry}
-              isOpen={open === i}
-              sessionHistory={sessionHistory.filter(id => id !== entry._id)}
-              onViewRecRelated={() => {}}
+              entry={open === -1 ? recEntry : entry}
+              isOpen={open === -1 ? (i === 0) : open === i}
+              sessionHistory={open === -1 ? sessionHistory : sessionHistory.filter(id => id !== entry._id)}
+              onViewRecRelated={handleViewRecRelated}
             />
           </div>
         ))}

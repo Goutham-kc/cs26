@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { getWallet, getLedger, getLeaderboard } from '../services/api';
 import { useSocket as useSocketContext } from '../context/SocketContext';
+import confetti from 'canvas-confetti';
 
 // ── Monochrome design tokens (spec §12) ──────────────────────────────────────
 const T = {
@@ -71,6 +72,67 @@ function Badge({ event }) {
       background: m.bg, color: m.color, letterSpacing: '0.08em',
       fontWeight: 700, fontFamily: T.mono, whiteSpace: 'nowrap',
     }}>{m.label}</span>
+  );
+}
+
+const ALL_BADGES = [
+  { id: 'fcfs_win', label: 'FCFS Win', desc: 'First to submit the correct answer to an open issue', icon: '🏆', earnedLabel: 'FCFS WIN', threshold: 1, event: 'FCFS_WIN' },
+  { id: 'centurion', label: 'Centurion', desc: 'Reach 100 SP total', icon: '💯', threshold: 100 },
+  { id: 'query_bonus', label: 'Query Bonus', desc: 'Raise a unique query that gets acknowledged', icon: '💡', earnedLabel: 'QUERY', threshold: 1, event: 'QUERY_BONUS' },
+  { id: 'escalation', label: 'Escalation', desc: 'Your issue got escalated to HIGH priority', icon: '📈', earnedLabel: 'ESCALATION', threshold: 1, event: 'ESCALATION_BONUS' },
+  { id: 'double_centurion', label: 'Double Centurion', desc: 'Reach 200 SP total', icon: '💪', threshold: 200 },
+  { id: 'top_50', label: 'Top 50', desc: 'Break into the leaderboard top 50', icon: '🎯', threshold: 50 },
+  { id: 'silver_500', label: 'Silver 500', desc: 'Reach 500 SP total', icon: '🥈', threshold: 500 },
+  { id: 'gold_1000', label: 'Gold 1000', desc: 'Reach 1000 SP total — true champion', icon: '🥇', threshold: 1000 },
+  { id: 'helpful', label: 'Helpful', desc: 'Get 10 upvotes across your raised queries', icon: '🙌', threshold: 10 },
+  { id: 'penalty', label: 'Penalty', desc: 'Failed the Yaksha content quality check', icon: '⚠️', earnedLabel: 'PENALTY', threshold: 1, event: 'PENALTY' },
+];
+
+function BadgeModal({ earnedBadges = [], totalSP = 0, walletRank, onClose }) {
+  const earnedIds = new Set(earnedBadges.map(b => b.id || b.key));
+  const top50 = walletRank != null && walletRank <= 50;
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal" style={{ maxWidth: 480 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>🏅 Badge Collection</h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--color-text-muted)', padding: 0 }}>×</button>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          {ALL_BADGES.map(badge => {
+            const isEarned = earnedIds.has(badge.id);
+            const spProgress = badge.threshold && !isEarned ? Math.min((totalSP / badge.threshold) * 100, 100) : null;
+            return (
+              <div key={badge.id} style={{
+                padding: '12px 14px',
+                borderRadius: 'var(--radius)',
+                border: `1px solid ${isEarned ? 'var(--color-teal)' : 'var(--color-border)'}`,
+                background: isEarned ? 'var(--color-teal-light)' : 'var(--color-surface)',
+                opacity: isEarned ? 1 : 0.55,
+              }}>
+                <div style={{ fontSize: 22, marginBottom: 4 }}>{isEarned ? badge.icon : '🔒'}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, fontFamily: 'var(--font-mono)', color: isEarned ? 'var(--color-teal-dark)' : 'var(--color-text-secondary)', marginBottom: 2 }}>{badge.label}</div>
+                <div style={{ fontSize: 10, color: 'var(--color-text-muted)', lineHeight: 1.4, marginBottom: spProgress != null ? 6 : 0 }}>{badge.desc}</div>
+                {spProgress != null && (
+                  <>
+                    <div style={{ fontSize: 9, color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)', marginBottom: 3 }}>
+                      {totalSP}/{badge.threshold} SP
+                    </div>
+                    <div style={{ height: 3, background: 'var(--color-border)', borderRadius: 3, overflow: 'hidden' }}>
+                      <div style={{ width: `${spProgress}%`, height: '100%', background: 'var(--color-teal)', transition: 'width 0.3s' }} />
+                    </div>
+                  </>
+                )}
+                {isEarned && (
+                  <div style={{ fontSize: 9, color: 'var(--color-teal-dark)', fontFamily: 'var(--font-mono)', marginTop: 4, fontWeight: 600 }}>✓ EARNED</div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -254,16 +316,6 @@ function SPBankStatement({ entries }) {
   return (
     <div style={{ marginTop: 32 }}>
       <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.primary, marginBottom: 12 }}>SP BANK STATEMENT</div>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-        {['SP Bank', 'Chats', 'Polls', 'Top 50'].map(btn => (
-          <button key={btn} style={{
-            padding: '6px 14px', border: `1px solid ${T.border}`,
-            borderRadius: T.radius, background: T.bg,
-            fontSize: 10, fontFamily: T.mono, letterSpacing: '0.08em',
-            textTransform: 'uppercase', cursor: 'pointer', color: T.secondary,
-          }}>{btn}</button>
-        ))}
-      </div>
       <div style={{ border: `1px solid ${T.border}`, borderRadius: T.radius, overflow: 'hidden' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 80px', background: T.surface, padding: '10px 16px', fontSize: 10, letterSpacing: '0.08em', color: T.muted, textTransform: 'uppercase', gap: 8 }}>
           <span>Description</span><span style={{ textAlign: 'right' }}>Debit</span><span style={{ textAlign: 'right' }}>Credit</span>
@@ -299,6 +351,7 @@ export default function SPDashboard({ user }) {
   const [loading,    setLoading]    = useState(true);
   const [banner,     setBanner]     = useState(null);
   const [spAnim,     setSpAnim]     = useState(0);
+  const [showBadgeModal, setShowBadgeModal] = useState(false);
   const { socket } = useSocketContext();
 
   // ── Data fetching ──────────────────────────────────────────────────────────
@@ -336,6 +389,18 @@ export default function SPDashboard({ user }) {
     }, 18);
     return () => clearInterval(t);
   }, [wallet?.user?.sp]);
+
+  const milestonesTriggered = useRef(new Set());
+  useEffect(() => {
+    if (!spAnim || !wallet) return;
+    const milestones = [100, 250, 500, 1000];
+    for (const m of milestones) {
+      if (spAnim >= m && !milestonesTriggered.current.has(m)) {
+        milestonesTriggered.current.add(m);
+        confetti({ particleCount: 80, spread: 60, origin: { y: 0.7 } });
+      }
+    }
+  }, [spAnim, wallet]);
 
   // ── Socket.io real-time ────────────────────────────────────────────────────
 
@@ -456,7 +521,7 @@ export default function SPDashboard({ user }) {
 
           {/* Badges + What To Do Next row */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
-            <div style={{ border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '20px 20px', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '20px 20px', display: 'flex', flexDirection: 'column', cursor: 'pointer' }} onClick={() => setShowBadgeModal(true)}>
               <BadgeCard badges={wallet?.badges || []} spToTop50={wallet?.spToTop50 || 0} />
             </div>
             <div style={{ border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '20px 20px', display: 'flex', flexDirection: 'column' }}>
@@ -550,6 +615,12 @@ export default function SPDashboard({ user }) {
       {/* ── LEADERBOARD ── */}
       {tab === 'leaderboard' && (
         <div>
+          {wallet?.rank && (
+            <div style={{ marginBottom: 16, padding: '12px 20px', background: T.invBg, borderRadius: T.radius, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 11, color: T.muted, fontFamily: T.mono, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Your Rank</span>
+              <span style={{ fontSize: 20, fontWeight: 700, color: T.invText, fontFamily: T.mono }}>#{wallet.rank} <span style={{ fontSize: 12, fontWeight: 400 }}>of {wallet.totalInterns}</span></span>
+            </div>
+          )}
           <div style={{ border: `1px solid ${T.border}`, borderRadius: T.radius, overflow: 'hidden', marginBottom: 24 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr 80px 60px', background: T.invBg, padding: '10px 20px', fontSize: 10, letterSpacing: '0.1em', color: T.muted, textTransform: 'uppercase', gap: 8 }}>
               <span>#</span><span>Intern</span><span style={{ textAlign: 'right' }}>SP</span><span style={{ textAlign: 'right' }}>Wins</span>
@@ -565,7 +636,10 @@ export default function SPDashboard({ user }) {
                 <div style={{ fontSize: 12, fontWeight: 700, color: entry.rank <= 3 ? T.primary : T.border }}>{entry.rank}</div>
                 <div>
                   <div style={{ fontSize: 13, fontWeight: entry.isYou ? 700 : 400 }}>
-                    {entry.name}
+                    <button
+                      onClick={() => window.dispatchEvent(new CustomEvent('oaq:show-user-profile', { detail: entry._id }))}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: entry.isYou ? T.primary : T.secondary, fontFamily: 'inherit', fontSize: 'inherit', fontWeight: 'inherit', padding: 0, textAlign: 'left' }}
+                    >{entry.name}</button>
                     {entry.isYou && <span style={{ fontSize: 9, marginLeft: 8, color: T.muted, letterSpacing: '0.08em' }}>YOU</span>}
                   </div>
                 </div>
@@ -587,7 +661,7 @@ export default function SPDashboard({ user }) {
             {leaderboard.map(entry => (
               <div key={entry._id} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
                 <div style={{ fontSize: 10, width: 80, color: entry.isYou ? T.primary : T.muted, fontWeight: entry.isYou ? 700 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {entry.isYou ? 'YOU' : entry.name.split(' ')[0].toUpperCase()}
+                  <button onClick={() => window.dispatchEvent(new CustomEvent('oaq:show-user-profile', { detail: entry._id }))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', fontFamily: 'inherit', fontSize: 'inherit', fontWeight: 'inherit', padding: 0 }}>{entry.isYou ? 'YOU' : entry.name.split(' ')[0].toUpperCase()}</button>
                 </div>
                 <div style={{ flex: 1, height: 5, background: T.surface, borderRadius: T.radius, overflow: 'hidden' }}>
                   <div style={{ width: `${(entry.sp / maxSP) * 100}%`, height: '100%', background: entry.isYou ? T.primary : T.border, transition: 'width 0.6s ease' }} />
@@ -604,6 +678,15 @@ export default function SPDashboard({ user }) {
         <span style={{ fontSize: 10, color: T.border, letterSpacing: '0.08em', textTransform: 'uppercase' }}>OAQ SP LEDGER · v2.0</span>
         <span style={{ fontSize: 10, color: T.border, letterSpacing: '0.08em' }}>FCFS · ATOMIC · SOCKET.IO</span>
       </div>
+
+      {showBadgeModal && (
+        <BadgeModal
+          earnedBadges={wallet?.badges || []}
+          totalSP={wallet?.total || 0}
+          walletRank={wallet?.rank}
+          onClose={() => setShowBadgeModal(false)}
+        />
+      )}
     </div>
   );
 }

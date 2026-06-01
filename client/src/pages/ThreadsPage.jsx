@@ -37,7 +37,7 @@ function Reply({ reply, threadId, onVote, onAccept, onReply, currentUser, depth 
         </div>
         <div style={{ flex: 1, minWidth: 0, paddingBottom: depth > 0 ? 12 : 0 }}>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-primary)' }}>{reply.repliedBy?.name || 'Unknown'}</span>
+            <button onClick={() => window.dispatchEvent(new CustomEvent('oaq:show-user-profile', { detail: reply.repliedBy?._id || reply.repliedBy }))} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: 'var(--color-text-primary)', padding: 0, fontFamily: 'inherit' }}>{reply.repliedBy?.name || 'Unknown'}</button>
             <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>·</span>
             <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{timeAgo(reply.timestamp)}</span>
             {reply.isPromoted && (
@@ -207,15 +207,21 @@ export default function ThreadsPage() {
   useEffect(() => {
     if (!socket) return;
     const refresh = () => load();
+    const handleMention = (data) => {
+      if (data.mentions?.includes(user?._id)) {
+        addToast(`You were mentioned in: "${data.threadTitle?.slice(0, 50)}"`, { type: 'mention' });
+      }
+      refresh();
+    };
     socket.on('thread:created', refresh);
     socket.on('thread:resolved', refresh);
-    socket.on('thread:replied', refresh);
+    socket.on('thread:replied', handleMention);
     return () => {
       socket.off('thread:created', refresh);
       socket.off('thread:resolved', refresh);
-      socket.off('thread:replied', refresh);
+      socket.off('thread:replied', handleMention);
     };
-  }, [socket]);
+  }, [socket, user, addToast]);
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -715,7 +721,10 @@ return (
         {loading && <div className="page-loading"><div className="spinner" /> Loading…</div>}
 
         {!loading && threadsList.length === 0 && (
-          <div className="empty-state"><strong>No threads found</strong>Be the first to start a discussion.</div>
+          <div className="empty-state">
+            <div style={{ fontSize: 36, marginBottom: 8 }}>💬</div>
+            <strong>No threads found</strong>Be the first to start a discussion.
+          </div>
         )}
 
         {!loading && threadsList.map(thread => (
@@ -733,7 +742,7 @@ return (
                   </div>
                   <div style={{ fontSize: 13, fontWeight: 600 }}>{thread.title}</div>
                   <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 3 }}>
-                    {thread.raisedBy?.name} · {timeAgo(thread.createdAt)} · ▲ {thread.upvoteCount} · 💬 {thread.threadReplies?.length || 0}
+                    {thread.raisedBy?.name} · {timeAgo(thread.createdAt)} · ▲ {thread.upvoteCount} · 💬 {thread.threadReplies?.length || 0} · 👁 {thread.viewCount || 0}
                     {thread.assignedTo?.name && <span> · Assigned: {thread.assignedTo.name}</span>}
                   </div>
                 </div>

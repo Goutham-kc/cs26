@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { admin, oaq } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { InputModal, SPAdjustModal } from '../components/SharedModals';
+import { ConfirmModal, InputModal, SPAdjustModal } from '../components/SharedModals';
 
 const T = {
   bg:           'var(--color-bg)',
@@ -43,6 +43,9 @@ export default function AdminPage() {
   const [issueToResolve, setIssueToResolve] = useState(null);
   const [showSpModal, setShowSpModal] = useState(false);
   const [userToAdjust, setUserToAdjust] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [promoteTarget, setPromoteTarget] = useState(null);
+  const [statsRange, setStatsRange] = useState('all');
   const [modQueue, setModQueue] = useState({ flagged: [], noAnswer: [], downvoted: [] });
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState('');
@@ -54,12 +57,12 @@ export default function AdminPage() {
 
   const loadStats = useCallback(async () => {
     try {
-      const data = await admin.getStats();
+      const data = await admin.getStats(statsRange);
       setStats(data);
     } catch (e) {
       showMsg(e.message, 'error');
     }
-  }, [showMsg]);
+  }, [showMsg, statsRange]);
 
   const loadIssues = useCallback(async (page = 1, filters = issueFilter) => {
     setLoading(true);
@@ -119,7 +122,7 @@ export default function AdminPage() {
     if (tab === 'users') loadUsers();
     if (tab === 'sections') loadSections();
     if (tab === 'moderation') loadModeration();
-  }, [tab]);
+  }, [tab, statsRange]);
 
   const handlePin = async (issue) => {
     try {
@@ -138,12 +141,29 @@ export default function AdminPage() {
   };
 
   const handleDelete = async (issue) => {
-    if (!confirm(`Delete issue #${issue.issueId}?`)) return;
     try {
       await admin.deleteIssue(issue._id);
       showMsg('Issue deleted');
       loadIssues(issuePage, issueFilter);
+      loadModeration();
     } catch (e) { showMsg(e.message, 'error'); }
+  };
+
+  const handleDeleteConfirm = () => {
+    if (!deleteTarget) return;
+    handleDelete(deleteTarget);
+    setDeleteTarget(null);
+  };
+
+  const handlePromoteConfirm = () => {
+    if (!promoteTarget) return;
+    const replyId = promoteTarget.communityReplies?.[0]?._id;
+    if (!replyId) return;
+    oaq.promoteReply(promoteTarget._id, replyId).then(() => {
+      showMsg('Reply promoted to answer');
+      loadModeration();
+    }).catch(e => showMsg(e.message, 'error'));
+    setPromoteTarget(null);
   };
 
   const handleResolve = async (issue) => {
@@ -229,6 +249,13 @@ export default function AdminPage() {
 
         {tab === 'overview' && stats && (
           <div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+              <select value={statsRange} onChange={e => setStatsRange(e.target.value)} style={{ padding: '6px 12px', border: `1px solid ${T.border}`, borderRadius: T.radius, fontSize: 12, fontFamily: T.mono, background: T.bg, color: T.primary, cursor: 'pointer' }}>
+                <option value="all">All Time</option>
+                <option value="7d">Last 7 Days</option>
+                <option value="30d">Last 30 Days</option>
+              </select>
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
               {[
                 { label: 'Total Issues', val: stats.issues.total, sub: `${stats.issues.open} open / ${stats.issues.resolved} resolved` },
@@ -567,23 +594,8 @@ export default function AdminPage() {
                           </div>
                         </div>
                         <div style={{ display: 'flex', gap: 6 }}>
-                          <button onClick={async () => {
-                            if (!confirm('Promote the top reply as the answer?')) return;
-                            try {
-                              const replyId = issue.communityReplies?.[0]?._id;
-                              if (!replyId) return;
-                              await oaq.promoteReply(issue._id, replyId);
-                              showMsg('Reply promoted to answer');
-                              loadModeration();
-                            } catch (e) { showMsg(e.message, 'error'); }
-                          }} style={{ padding: '5px 12px', background: T.tealLight, color: T.tealDark, border: `1px solid ${T.teal}`, borderRadius: T.radius, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Promote Best</button>
-                          <button onClick={async () => {
-                            try {
-                              await admin.deleteIssue(issue._id);
-                              showMsg('Issue deleted');
-                              loadModeration();
-                            } catch (e) { showMsg(e.message, 'error'); }
-                          }} style={{ padding: '5px 12px', background: T.redLight, color: T.redDark, border: `1px solid ${T.red}`, borderRadius: T.radius, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Delete</button>
+                          <button onClick={() => setPromoteTarget(issue)} style={{ padding: '5px 12px', background: T.tealLight, color: T.tealDark, border: `1px solid ${T.teal}`, borderRadius: T.radius, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Promote Best</button>
+                          <button onClick={() => setDeleteTarget(issue)} style={{ padding: '5px 12px', background: T.redLight, color: T.redDark, border: `1px solid ${T.red}`, borderRadius: T.radius, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Delete</button>
                         </div>
                       </div>
                     ))}
@@ -613,6 +625,27 @@ export default function AdminPage() {
             currentSp={userToAdjust.sp}
             onSubmit={handleSpSubmit}
             onClose={() => { setShowSpModal(false); setUserToAdjust(null); }}
+          />
+        )}
+
+        {deleteTarget && (
+          <ConfirmModal
+            title="Delete Issue"
+            message={`Delete issue #${deleteTarget.issueId}? This action cannot be undone.`}
+            confirmLabel="Delete"
+            danger
+            onConfirm={handleDeleteConfirm}
+            onClose={() => setDeleteTarget(null)}
+          />
+        )}
+
+        {promoteTarget && (
+          <ConfirmModal
+            title="Promote Best Reply"
+            message={`Promote the top reply as the answer for "${promoteTarget.queryText?.slice(0, 60)}"?`}
+            confirmLabel="Promote"
+            onConfirm={handlePromoteConfirm}
+            onClose={() => setPromoteTarget(null)}
           />
         )}
       </div>
