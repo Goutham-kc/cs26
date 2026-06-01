@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { admin, oaq } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { InputModal, SPAdjustModal } from '../components/SharedModals';
 
 const T = {
   bg:           'var(--color-bg)',
@@ -38,6 +39,10 @@ export default function AdminPage() {
   const [issueFilter, setIssueFilter] = useState({ status: '', search: '' });
   const [userFilter, setUserFilter] = useState({ role: '', search: '' });
   const [showAddUser, setShowAddUser] = useState(false);
+  const [showResolveModal, setShowResolveModal] = useState(false);
+  const [issueToResolve, setIssueToResolve] = useState(null);
+  const [showSpModal, setShowSpModal] = useState(false);
+  const [userToAdjust, setUserToAdjust] = useState(null);
   const [modQueue, setModQueue] = useState({ flagged: [], noAnswer: [], downvoted: [] });
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState('');
@@ -142,13 +147,31 @@ export default function AdminPage() {
   };
 
   const handleResolve = async (issue) => {
-    const answer = prompt('Enter resolution answer:');
-    if (!answer) return;
+    setIssueToResolve(issue);
+    setShowResolveModal(true);
+  };
+
+  const handleResolveSubmit = async (answer) => {
+    if (!issueToResolve) return;
     try {
-      await admin.resolveIssue(issue._id, answer);
+      await admin.resolveIssue(issueToResolve._id, answer);
       showMsg('Issue resolved');
+      setShowResolveModal(false);
+      setIssueToResolve(null);
       loadIssues(issuePage, issueFilter);
     } catch (e) { showMsg(e.message, 'error'); }
+  };
+
+  const handleSpAdjust = (user) => {
+    setUserToAdjust(user);
+    setShowSpModal(true);
+  };
+
+  const handleSpSubmit = (newSp) => {
+    if (!userToAdjust) return;
+    handleUpdateUser(userToAdjust, 'sp', newSp);
+    setShowSpModal(false);
+    setUserToAdjust(null);
   };
 
   const handleUpdateUser = async (user, field, value) => {
@@ -451,10 +474,7 @@ export default function AdminPage() {
                           <td style={{ padding: '10px 14px', fontWeight: 600, color: T.tealDark, fontFamily: T.mono }}>{u.sp}</td>
                           <td style={{ padding: '10px 14px', color: T.muted, fontFamily: T.mono }}>{new Date(u.joinDate).toLocaleDateString()}</td>
                           <td style={{ padding: '10px 14px' }}>
-                            <button onClick={() => {
-                              const newSp = parseInt(prompt(`Adjust SP for ${u.name} (current: ${u.sp}):`));
-                              if (!isNaN(newSp)) handleUpdateUser(u, 'sp', newSp);
-                            }} style={{ padding: '4px 8px', border: `1px solid ${T.border}`, borderRadius: T.radius, background: T.surface, color: T.primary, cursor: 'pointer', fontSize: 12 }}>Adjust SP</button>
+                            <button onClick={() => handleSpAdjust(u)} style={{ padding: '4px 8px', border: `1px solid ${T.border}`, borderRadius: T.radius, background: T.surface, color: T.primary, cursor: 'pointer', fontSize: 12 }}>Adjust SP</button>
                           </td>
                         </tr>
                       ))}
@@ -575,6 +595,25 @@ export default function AdminPage() {
               <div style={{ textAlign: 'center', padding: '40px 0', color: T.muted, fontSize: 13, fontFamily: T.mono }}>Moderation queue is clear ✅</div>
             )}
           </div>
+        )}
+
+        {showResolveModal && issueToResolve && (
+          <InputModal
+            title="Resolve Issue"
+            label="Resolution Answer"
+            placeholder="Enter the resolution answer..."
+            onSubmit={handleResolveSubmit}
+            onClose={() => { setShowResolveModal(false); setIssueToResolve(null); }}
+          />
+        )}
+
+        {showSpModal && userToAdjust && (
+          <SPAdjustModal
+            userName={userToAdjust.name}
+            currentSp={userToAdjust.sp}
+            onSubmit={handleSpSubmit}
+            onClose={() => { setShowSpModal(false); setUserToAdjust(null); }}
+          />
         )}
       </div>
     </div>

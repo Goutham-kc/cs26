@@ -3,6 +3,7 @@ import { threads } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import { useToast } from '../context/ToastContext';
+import { ThreadCloseModal } from '../components/SharedModals';
 
 const SECTION_LABELS = {
   '01': 'ViBe', '02': 'NOC', '03': 'Teams', '04': 'Onboarding',
@@ -172,6 +173,8 @@ export default function ThreadsPage() {
   const [inlineReplyText, setInlineReplyText] = useState('');
   const [inlineReplySubmitting, setInlineReplySubmitting] = useState(false);
   const [showResolveModal, setShowResolveModal] = useState(false);
+  const [showCloseModal, setShowCloseModal] = useState(false);
+  const [threadToClose, setThreadToClose] = useState(null);
   const [resolveThread, setResolveThread] = useState(null);
   const [resolveSp, setResolveSp] = useState('');
   const [resolveUserId, setResolveUserId] = useState('');
@@ -325,15 +328,8 @@ export default function ThreadsPage() {
           setThreadDetail(full);
         }
       } else {
-        const spRaw = prompt('Close thread — award SP to thread creator? (Enter SP amount or leave blank to close without SP)');
-        if (spRaw === null) return;
-        const spReward = parseInt(spRaw) || 0;
-        await threads.close(thread._id, { spReward, rewardUserId: thread.raisedBy._id });
-        addToast(spReward > 0 ? `Thread closed — ${spReward} SP awarded` : 'Thread closed');
-        if (threadDetail?._id === thread._id) {
-          const full = await threads.get(thread._id);
-          setThreadDetail(full);
-        }
+        setThreadToClose(thread);
+        setShowCloseModal(true);
       }
       load();
     } catch (e) {
@@ -374,6 +370,23 @@ export default function ThreadsPage() {
       addToast('Thread marked as resolved');
       if (threadDetail?._id === thread._id) {
         const full = await threads.get(thread._id);
+        setThreadDetail(full);
+      }
+      load();
+    } catch (e) {
+      addToast(e.message, 'error');
+    }
+  };
+
+  const handleCloseSubmit = async (spReward) => {
+    if (!threadToClose) return;
+    try {
+      await threads.close(threadToClose._id, { spReward, rewardUserId: threadToClose.raisedBy._id });
+      addToast(spReward > 0 ? `Thread closed — ${spReward} SP awarded` : 'Thread closed');
+      setShowCloseModal(false);
+      setThreadToClose(null);
+      if (threadDetail?._id === threadToClose._id) {
+        const full = await threads.get(threadToClose._id);
         setThreadDetail(full);
       }
       load();
@@ -650,6 +663,15 @@ export default function ThreadsPage() {
           </div>
         </div>
       )}
+
+      {showCloseModal && threadToClose && (
+        <ThreadCloseModal
+          threadTitle={threadToClose.title}
+          threadCreatorName={threadToClose.raisedBy?.name || 'Unknown'}
+          onSubmit={handleCloseSubmit}
+          onClose={() => { setShowCloseModal(false); setThreadToClose(null); }}
+        />
+      )}
     </div>
   );
 }
@@ -811,6 +833,15 @@ return (
             </div>
           </div>
         </div>
+      )}
+
+      {showCloseModal && threadToClose && (
+        <ThreadCloseModal
+          threadTitle={threadToClose.title}
+          threadCreatorName={threadToClose.raisedBy?.name || 'Unknown'}
+          onSubmit={handleCloseSubmit}
+          onClose={() => { setShowCloseModal(false); setThreadToClose(null); }}
+        />
       )}
     </div>
   );
