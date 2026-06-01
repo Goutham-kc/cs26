@@ -24,6 +24,9 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# Local dev logs
+vite.log
+
 # Editor / System files
 .DS_Store
 Thumbs.db
