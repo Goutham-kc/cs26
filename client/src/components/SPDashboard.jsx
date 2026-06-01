@@ -74,15 +74,17 @@ function Badge({ event }) {
   );
 }
 
-function TabBtn({ label, active, onClick }) {
+function TabBtn({ label, desc, active, onClick }) {
   return (
     <button onClick={onClick} style={{
-      background: 'none', border: 'none', padding: '10px 20px 12px',
-      fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase',
+      background: 'none', border: 'none', padding: '10px 20px 14px',
       cursor: 'pointer', color: active ? T.primary : T.muted,
-      borderBottom: `2px solid ${active ? T.primary : 'transparent'}`,
-      fontFamily: T.mono, transition: 'color 0.15s',
-    }}>{label}</button>
+      borderBottom: `2.5px solid ${active ? T.primary : 'transparent'}`,
+      transition: 'color 0.15s', textAlign: 'left',
+    }}>
+      <div style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: T.mono, marginBottom: 2 }}>{label}</div>
+      {desc && <div style={{ fontSize: 9, color: T.muted, fontFamily: T.mono, letterSpacing: '0.06em', textTransform: 'none', opacity: active ? 0.7 : 0.5 }}>{desc}</div>}
+    </button>
   );
 }
 
@@ -397,9 +399,9 @@ export default function SPDashboard({ user }) {
 
       {/* Tabs */}
       <div style={{ display: 'flex', borderBottom: `0.5px solid ${T.border}`, marginBottom: 28 }}>
-        {['overview', 'ledger', 'leaderboard'].map(t => (
-          <TabBtn key={t} label={t} active={tab === t} onClick={() => setTab(t)} />
-        ))}
+        <TabBtn label="Overview"     desc="Your total SP, badges, trend chart & activity"  active={tab === 'overview'}     onClick={() => setTab('overview')} />
+        <TabBtn label="Ledger"       desc="Full transaction history with dates & reasons"  active={tab === 'ledger'}       onClick={() => setTab('ledger')} />
+        <TabBtn label="Leaderboard"  desc="See how you rank compared to other interns"     active={tab === 'leaderboard'} onClick={() => setTab('leaderboard')} />
       </div>
 
       {/* ── OVERVIEW ── */}
