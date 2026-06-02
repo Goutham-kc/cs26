@@ -143,6 +143,63 @@ router.get('/search', async (req, res) => {
   }
 });
 
+router.post('/check-duplicate', auth, async (req, res) => {
+  try {
+    const { queryText, excludeId } = req.body;
+    if (!queryText || queryText.trim().length < 6) return res.json({ duplicates: [] });
+
+    const words = queryText.toLowerCase().split(/\s+/)
+      .filter(w => w.length > 2)
+      .slice(0, 10);
+
+    const allIssues = await OAQIssue.find({ status: { $ne: 'Duplicate' }, _id: { $ne: excludeId } })
+      .select('queryText answer status isBaseline categoryTag resolvedBy');
+
+    const scored = allIssues.map(issue => {
+      const issueWords = issue.queryText.toLowerCase().split(/\s+/)
+        .filter(w => w.length > 2);
+
+      let matchCount = 0;
+      for (const w of words) {
+        if (issueWords.some(iw => iw.includes(w) || w.includes(iw))) matchCount++;
+      }
+
+      const wordMatchRatio = matchCount / Math.max(words.length, 1);
+      const charOverlap = intersectionSize(
+        queryText.toLowerCase().replace(/\s+/g, ''),
+        issue.queryText.toLowerCase().replace(/\s+/g, '')
+      ) / Math.max(queryText.length, issue.queryText.length);
+
+      const score = (wordMatchRatio * 0.5) + (charOverlap * 0.5);
+
+      return { issue, score };
+    });
+
+    const threshold = 0.35;
+    const duplicates = scored
+      .filter(s => s.score >= threshold)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5)
+      .map(s => ({
+        _id: s.issue._id,
+        queryText: s.issue.queryText,
+        status: s.issue.status,
+        isBaseline: s.issue.isBaseline,
+        categoryTag: s.issue.categoryTag,
+        matchScore: Math.round(s.score * 100),
+      }));
+
+    res.json({ duplicates });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+function intersectionSize(a, b) {
+  const set = new Set(a.split(''));
+  return [...b].filter(c => set.has(c)).length;
+}
+
 router.get('/open-queries', async (req, res) => {
   try {
     const issues = await OAQIssue.find({
