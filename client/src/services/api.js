@@ -151,3 +151,17 @@ export const threads = {
   setPriority: (id, priority) => api.patch(`/threads/${id}/priority`, { priority }),
   delete: (id) => api.delete(`/threads/${id}`),
 };
+
+export const rag = {
+  chat: (messages, token) => {
+    const BASE = import.meta.env.VITE_API_URL || '/api';
+    return fetch(`${BASE}/rag/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ messages }),
+    });
+  },
+};

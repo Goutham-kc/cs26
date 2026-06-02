@@ -114,6 +114,7 @@ oaq-system/
         │   ├── RaiseQueryModal.jsx# Modal for raising new queries
         │   ├── ResolveModal.jsx  # Resolution submission modal
         │   ├── SharedModals.jsx  # Reusable ConfirmModal, InputModal, SPAdjustModal, ThreadCloseModal
+        │   ├── RAGChatWidget.jsx# Floating AI chat with streaming text and knowledge base RAG
         │   └── YakshaViewport.jsx# Content quality audit display
         └── pages/
             ├── HomePage.jsx      # OAQ main portal with search and trending
@@ -146,6 +147,7 @@ oaq-system/
 - **Dark/Light Mode** — CSS variable-based theming
 - **Modal System** — ConfirmModal, InputModal, SPAdjustModal, ThreadCloseModal
 - **Toast Notifications** — In-app notification stack
+- **RAG AI Chat Widget** — Floating 🤖 assistant with streaming GPT-3.5 responses backed by the FAQ knowledge base (falls back to keyword-matched Q&A when no API key is set)
 
 ---
 
@@ -182,6 +184,9 @@ oaq-system/
 
 ### 5. Admin & Moderation Operations (`/api/admin`)
 - `GET /api/admin/stats` - Fetch overall metrics (total issues, top holders, activity log).
+
+### 6. RAG AI Chat (`/api/rag`)
+- `POST /api/rag/chat` - Streaming RAG chat endpoint. Sends message history, retrieves relevant Q&A context from the knowledge base using MongoDB text search, and streams GPT-3.5-turbo responses. Falls back to knowledge-base-only answers if `OPENAI_API_KEY` is not set in `.env`.
 - `GET /api/admin/issues` - Paginated admin queries list with Pin/Feature/Delete triggers.
 - `GET /api/admin/users` - List all system accounts.
 - `POST /api/admin/users` - Direct creation of system accounts (Superadmin only).
