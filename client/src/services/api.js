@@ -14,10 +14,14 @@ function authHeaders() {
 async function handleResponse(res) {
   const data = await res.json().catch(() => ({}));
   if (res.status === 401) {
+    const hadToken = !!localStorage.getItem('oaq_token');
     localStorage.removeItem('oaq_token');
     localStorage.removeItem('oaq_user');
-    window.dispatchEvent(new CustomEvent('oaq:session-expired', { detail: data }));
-    throw Object.assign(new Error('Session expired'), { code: 'SESSION_EXPIRED' });
+    if (hadToken) {
+      window.dispatchEvent(new CustomEvent('oaq:session-expired', { detail: data }));
+      throw Object.assign(new Error('Session expired'), { code: 'SESSION_EXPIRED' });
+    }
+    throw Object.assign(new Error(data.message || 'Authentication failed'), { code: 'AUTH_FAILED' });
   }
   if (!res.ok) throw new Error(data.reason || data.message || data.code || 'Request failed');
   return data;
