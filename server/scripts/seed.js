@@ -92,7 +92,7 @@ async function seed() {
         isBaseline: true,
         isPinned: false,
         isFeatured: false,
-        upvoteCount: Math.floor(Math.random() * 20) + 1,
+        upvoteCount: 1,
         priority: 'NORMAL',
         raisedBy: superadmin._id,
         resolvedBy: superadmin._id,

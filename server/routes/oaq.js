@@ -93,7 +93,7 @@ router.post('/seed-baseline', auth, requireRole('admin', 'superadmin'), async (r
         isBaseline: true,
         isPinned: false,
         isFeatured: false,
-        upvoteCount: Math.floor(Math.random() * 20) + 1,
+        upvoteCount: 1,
         priority: 'NORMAL',
         raisedBy: req.user._id,
         resolvedBy: req.user._id,
@@ -114,10 +114,10 @@ router.post('/seed-baseline', auth, requireRole('admin', 'superadmin'), async (r
 router.get('/trending', async (req, res) => {
   try {
     const top15 = await OAQIssue.aggregate([
-      { $match: { status: 'Resolved' } },
+      { $match: { status: { $in: ['Resolved', 'Open'] } } },
       { $sort: { isPinned: -1, isFeatured: -1, upvoteCount: -1, createdAt: -1 } },
       { $limit: 15 },
-      { $project: { queryText: 1, categoryTag: 1, upvoteCount: 1, answer: 1, resolvedBy: 1, isPinned: 1, isFeatured: 1 } }
+      { $project: { queryText: 1, categoryTag: 1, upvoteCount: 1, answer: 1, resolvedBy: 1, isPinned: 1, isFeatured: 1, status: 1, upvotedBy: 1, downvotedBy: 1 } }
     ]);
     res.json(top15);
   } catch (err) {
