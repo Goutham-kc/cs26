@@ -44,7 +44,7 @@ async function checkAutoPromote(thread) {
 
 router.get('/', async (req, res) => {
   try {
-    const { status, priority, category, label, search, page = 1, limit = 20 } = req.query;
+    const { status, priority, category, label, search, sort, page = 1, limit = 20 } = req.query;
     const filter = {};
     if (status) filter.status = status;
     if (priority) filter.priority = priority;
@@ -53,9 +53,23 @@ router.get('/', async (req, res) => {
     if (search) filter.$text = { $search: search };
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    let sortObj = { isPinned: -1 };
+    if (sort === 'votes') {
+      sortObj.upvoteCount = -1;
+      sortObj.createdAt = -1;
+    } else if (sort === 'newest') {
+      sortObj.createdAt = -1;
+    } else if (sort === 'oldest') {
+      sortObj.createdAt = 1;
+    } else {
+      sortObj.priority = -1;
+      sortObj.createdAt = -1;
+    }
+
     const [threads, total] = await Promise.all([
       Thread.find(filter)
-        .sort({ isPinned: -1, priority: -1, createdAt: -1 })
+        .sort(sortObj)
         .skip(skip)
         .limit(parseInt(limit))
         .populate('raisedBy', 'name role')

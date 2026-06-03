@@ -2,24 +2,14 @@ import { useState } from 'react';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import YakshaViewport from './YakshaViewport';
-
-// Basic client-side Yaksha preview (mirrors backend logic)
-function localYakshaCheck(text) {
-  const blocklist = ['spam', 'test123', 'asdf', 'idk', 'dunno'];
-  const clean = text.trim().toLowerCase();
-  if (clean.length < 20) return { passed: false, reason: 'Too short (min 20 chars)' };
-  if (blocklist.some(w => clean.includes(w))) return { passed: false, reason: 'Blocked content' };
-  const tokens = clean.split(/\s+/);
-  if (new Set(tokens).size / tokens.length < 0.6) return { passed: false, reason: 'Too repetitive' };
-  return { passed: true };
-}
+import { localYakshaCheck } from '../services/yakshaCheck';
 
 export default function ResolveModal({ issue, onClose, onResolved }) {
   const [answer, setAnswer]   = useState('');
   const [loading, setLoading] = useState(false);
   const { addToast } = useToast();
 
-  const preview = answer.length > 0 ? localYakshaCheck(answer) : null;
+  const preview = answer.length > 0 ? localYakshaCheck(answer, issue.queryText) : null;
 
   const handleSubmit = async () => {
     if (!answer.trim()) { addToast('Write an answer first', { type: 'warning' }); return; }
@@ -74,12 +64,13 @@ export default function ResolveModal({ issue, onClose, onResolved }) {
           <YakshaViewport
             activeText={answer.slice(0, 100) + (answer.length > 100 ? '…' : '')}
             auditStatus={preview.passed ? 'pass' : 'fail'}
+            auditReason={preview.reason}
           />
         )}
 
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
           <button className="btn" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" onClick={handleSubmit} disabled={loading}>
+          <button className="btn btn-primary" onClick={handleSubmit} disabled={loading || (preview && !preview.passed)}>
             {loading ? 'Submitting…' : 'Submit (FCFS)'}
           </button>
         </div>

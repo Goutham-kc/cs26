@@ -38,6 +38,7 @@ function ActivitySummary({ stats }) {
 export default function HomePage() {
   const [tab, setTab]           = useState('baseline');
   const [openQueries, setOpenQueries] = useState([]);
+  const [openSort, setOpenSort] = useState('votes');
   const [sections, setSections] = useState([]);
   const [searchQ, setSearchQ]   = useState('');
   const [searchResults, setSearchResults] = useState(null);
@@ -94,13 +95,13 @@ export default function HomePage() {
     };
   }, [socket, tab]);
 
-  const loadOpenQueries = () => {
-    oaq.getOpenQueries().then(setOpenQueries).catch(console.error);
+  const loadOpenQueries = (sort = openSort) => {
+    oaq.getOpenQueries(sort).then(setOpenQueries).catch(console.error);
   };
 
   useEffect(() => {
     if (tab === 'open') loadOpenQueries();
-  }, [tab]);
+  }, [tab, openSort]);
 
   useEffect(() => {
     if (!user) return;
@@ -273,9 +274,20 @@ export default function HomePage() {
             {tab === 'trending' && <TrendingFeed filteredSections={sections} />}
             {tab === 'open' && (
               <div>
-                <p className="section-label" style={{ marginBottom: 16 }}>
-                  Open Queries with Community Answers — upvote the best reply to auto-resolve (+50 SP)
-                </p>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+                  <p className="section-label" style={{ margin: 0 }}>
+                    Open Queries with Community Answers — upvote the best reply to auto-resolve (+50 SP)
+                  </p>
+                  <select
+                    value={openSort}
+                    onChange={e => setOpenSort(e.target.value)}
+                    style={{ padding: '4px 8px', borderRadius: 'var(--radius)', border: '1px solid var(--color-border)', fontSize: 11, fontFamily: 'var(--font-mono)', background: 'var(--color-bg)', color: 'var(--color-text-primary)', cursor: 'pointer' }}
+                  >
+                    <option value="votes">Sort: Most Upvoted</option>
+                    <option value="newest">Sort: Newest First</option>
+                    <option value="oldest">Sort: Oldest First</option>
+                  </select>
+                </div>
                 {openQueries.length === 0 && (
                   <div className="empty-state">
                     <div style={{ fontSize: 36, marginBottom: 8 }}>💬</div>

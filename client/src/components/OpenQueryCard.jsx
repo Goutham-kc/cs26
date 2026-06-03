@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { oaq, api } from '../services/api';
 import { useToast } from '../context/ToastContext';
+import YakshaViewport from './YakshaViewport';
+import { localYakshaCheck } from '../services/yakshaCheck';
 
 export default function OpenQueryCard({ issue, currentUser, onVote }) {
   const { addToast } = useToast();
@@ -17,6 +19,7 @@ export default function OpenQueryCard({ issue, currentUser, onVote }) {
   const hasAnswered = (issue.communityReplies || []).some(
     r => r.repliedBy?._id === currentUser?._id || r.repliedBy === currentUser?._id
   );
+  const preview = replyText.length > 0 ? localYakshaCheck(replyText, issue.queryText) : null;
 
   const handleVote = async (replyId, type) => {
     if (votingId) return;
@@ -160,12 +163,21 @@ export default function OpenQueryCard({ issue, currentUser, onVote }) {
                 ✓ You submitted an answer to this issue
               </div>
             ) : (
-              <form onSubmit={handleSubmit} style={{ padding: '10px 18px', borderTop: '1px solid var(--color-border)', display: 'flex', gap: 8 }}>
-                <input value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Submit your answer…" style={{ flex: 1, padding: '6px 10px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', fontSize: 12, fontFamily: 'var(--font-mono)', background: 'var(--color-bg)', color: 'var(--color-text-primary)' }} />
-                <button type="submit" disabled={submitting || !replyText.trim()} style={{ padding: '6px 14px', background: submitting || !replyText.trim() ? 'var(--color-border)' : 'var(--color-primary)', color: submitting || !replyText.trim() ? 'var(--color-text-muted)' : 'var(--color-inv-text)', border: 'none', borderRadius: 'var(--radius)', fontSize: 12, cursor: submitting ? 'not-allowed' : 'pointer', fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap' }}>
-                  {submitting ? '…' : 'Submit'}
-                </button>
-              </form>
+              <div style={{ padding: '10px 18px', borderTop: '1px solid var(--color-border)' }}>
+                <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 8, marginBottom: preview ? 12 : 0 }}>
+                  <input value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Submit your answer…" style={{ flex: 1, padding: '6px 10px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', fontSize: 12, fontFamily: 'var(--font-mono)', background: 'var(--color-bg)', color: 'var(--color-text-primary)' }} />
+                  <button type="submit" disabled={submitting || !replyText.trim() || (preview && !preview.passed)} style={{ padding: '6px 14px', background: submitting || !replyText.trim() || (preview && !preview.passed) ? 'var(--color-border)' : 'var(--color-primary)', color: submitting || !replyText.trim() || (preview && !preview.passed) ? 'var(--color-text-muted)' : 'var(--color-inv-text)', border: 'none', borderRadius: 'var(--radius)', fontSize: 12, cursor: submitting || (preview && !preview.passed) ? 'not-allowed' : 'pointer', fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap' }}>
+                    {submitting ? '…' : 'Submit'}
+                  </button>
+                </form>
+                {preview && (
+                  <YakshaViewport
+                    activeText={replyText.slice(0, 100) + (replyText.length > 100 ? '…' : '')}
+                    auditStatus={preview.passed ? 'pass' : 'fail'}
+                    auditReason={preview.reason}
+                  />
+                )}
+              </div>
             )
           )}
 

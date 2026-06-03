@@ -615,7 +615,7 @@ export default function SPDashboard({ user }) {
       {/* ── LEADERBOARD ── */}
       {tab === 'leaderboard' && (
         <div>
-          {wallet?.rank && (
+          {wallet?.rank && wallet?.user?.role === 'intern' && (
             <div style={{ marginBottom: 16, padding: '12px 20px', background: T.invBg, borderRadius: T.radius, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: 11, color: T.muted, fontFamily: T.mono, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Your Rank</span>
               <span style={{ fontSize: 20, fontWeight: 700, color: T.invText, fontFamily: T.mono }}>#{wallet.rank} <span style={{ fontSize: 12, fontWeight: 400 }}>of {wallet.totalInterns}</span></span>
@@ -639,7 +639,7 @@ export default function SPDashboard({ user }) {
                     <button
                       onClick={() => window.dispatchEvent(new CustomEvent('oaq:show-user-profile', { detail: entry._id }))}
                       style={{ background: 'none', border: 'none', cursor: 'pointer', color: entry.isYou ? T.primary : T.secondary, fontFamily: 'inherit', fontSize: 'inherit', fontWeight: 'inherit', padding: 0, textAlign: 'left' }}
-                    >{entry.name}</button>
+                    >{entry.name || 'Unknown'}</button>
                     {entry.isYou && <span style={{ fontSize: 9, marginLeft: 8, color: T.muted, letterSpacing: '0.08em' }}>YOU</span>}
                   </div>
                 </div>
@@ -661,7 +661,7 @@ export default function SPDashboard({ user }) {
             {leaderboard.map(entry => (
               <div key={entry._id} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
                 <div style={{ fontSize: 10, width: 80, color: entry.isYou ? T.primary : T.muted, fontWeight: entry.isYou ? 700 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  <button onClick={() => window.dispatchEvent(new CustomEvent('oaq:show-user-profile', { detail: entry._id }))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', fontFamily: 'inherit', fontSize: 'inherit', fontWeight: 'inherit', padding: 0 }}>{entry.isYou ? 'YOU' : entry.name.split(' ')[0].toUpperCase()}</button>
+                  <button onClick={() => window.dispatchEvent(new CustomEvent('oaq:show-user-profile', { detail: entry._id }))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', fontFamily: 'inherit', fontSize: 'inherit', fontWeight: 'inherit', padding: 0 }}>{entry.isYou ? 'YOU' : (entry.name || 'Unknown').split(' ')[0].toUpperCase()}</button>
                 </div>
                 <div style={{ flex: 1, height: 5, background: T.surface, borderRadius: T.radius, overflow: 'hidden' }}>
                   <div style={{ width: `${(entry.sp / maxSP) * 100}%`, height: '100%', background: entry.isYou ? T.primary : T.border, transition: 'width 0.6s ease' }} />

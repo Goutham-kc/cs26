@@ -7,6 +7,7 @@ import HomePage from './pages/HomePage';
 import TrackerPage from './pages/TrackerPage';
 import ThreadsPage from './pages/ThreadsPage';
 import AdminPage from './pages/AdminPage';
+import AdminIssueDetail from './pages/AdminIssueDetail';
 import UserProfileModal from './components/UserProfileModal';
 import RAGChatWidget from './components/RAGChatWidget';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -94,7 +95,7 @@ function Shell() {
   }, [location.pathname]);
 
   if (loading) return null;
-  if (!user) return <LoginForm onAuth={(nextUser) => login(nextUser)} />;
+  if (!user) return <LoginForm onAuth={(nextUser, token) => login(nextUser, token)} />;
 
   return (
     <>
@@ -112,6 +113,7 @@ function Shell() {
           </div>
         } />
         <Route path="/admin" element={<AdminPage />} />
+        <Route path="/admin/issues/:id" element={<AdminIssueDetail />} />
       </Routes>
       {profileUserId && (
         <UserProfileModal userId={profileUserId} onClose={() => setProfileUserId(null)} />
