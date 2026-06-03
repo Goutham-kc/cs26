@@ -142,8 +142,10 @@ export default function OpenQueryCard({ issue, currentUser, onVote }) {
                   </button>
                 </div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 3, fontFamily: 'var(--font-mono)' }}>
+                  <div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 3, fontFamily: 'var(--font-mono)', display: 'flex', gap: 6, alignItems: 'center' }}>
                     <button onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('oaq:show-user-profile', { detail: reply.repliedBy?._id || reply.repliedBy })); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', fontFamily: 'inherit', fontSize: 'inherit', padding: 0 }}>{reply.repliedBy?.name || 'Unknown'}</button>
+                    <span>·</span>
+                    <span>{reply.timestamp && !isNaN(new Date(reply.timestamp).getTime()) ? new Date(reply.timestamp).toLocaleDateString() : 'N/A'}</span>
                     {reply.isPromoted && <span style={{ color: 'var(--color-teal)', marginLeft: 6, fontWeight: 600 }}>✓ PROMOTED</span>}
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>{reply.replyText}</div>

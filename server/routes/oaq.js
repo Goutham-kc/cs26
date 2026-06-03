@@ -203,8 +203,7 @@ function intersectionSize(a, b) {
 router.get('/open-queries', async (req, res) => {
   try {
     const issues = await OAQIssue.find({
-      status: 'Open',
-      'communityReplies.0': { $exists: true }
+      status: 'Open'
     })
       .sort({ updatedAt: -1 })
       .limit(30)
@@ -417,12 +416,17 @@ router.post('/issues/:id/resolve', auth, async (req, res) => {
       if (io) io.emit('issue:replied', { issueId: issue._id, queryText: issue.queryText });
 
       const promoted = await checkAutoPromote(updatedIssue);
+      const finalIssue = await OAQIssue.findById(issue._id)
+        .populate('raisedBy', 'name')
+        .populate('resolvedBy', 'name')
+        .populate('communityReplies.repliedBy', 'name');
+
       if (promoted) {
         if (io) io.emit('issue:resolved', { issueId: issue._id, queryText: issue.queryText });
-        return res.json({ code: 'AUTO_PROMOTED', sp: 55, message: '3 upvotes reached — answer auto-promoted to resolved (+50 SP bonus)', issue: updatedIssue });
+        return res.json({ code: 'AUTO_PROMOTED', sp: 55, message: '3 upvotes reached — answer auto-promoted to resolved (+50 SP bonus)', issue: finalIssue });
       }
 
-      res.json({ code: 'SUBMITTED', sp: 5, message: 'Answer submitted — needs 3 upvotes to auto-resolve (+50 SP on promotion)', issue: updatedIssue });
+      res.json({ code: 'SUBMITTED', sp: 5, message: 'Answer submitted — needs 3 upvotes to auto-resolve (+50 SP on promotion)', issue: finalIssue });
     } catch (err) {
       await OAQIssue.findByIdAndUpdate(req.params.id, { $set: { lockedBy: null, lockExpiry: null } });
       throw err;
@@ -522,18 +526,23 @@ router.post('/issues/:id/community-reply', auth, async (req, res) => {
       req.params.id,
       { $push: { communityReplies: { repliedBy: req.user._id, replyText: answer } } },
       { new: true }
-    ).populate('communityReplies.repliedBy', 'name');
+    );
 
     await awardSP(req.user._id, 5, `Community reply on: Issue #${issue.issueId}`, req.params.id, 'QUERY_BONUS');
     if (io) io.emit('issue:replied', { issueId: req.params.id });
 
     const promoted = await checkAutoPromote(updatedIssue);
+    const finalIssue = await OAQIssue.findById(issue._id)
+      .populate('raisedBy', 'name')
+      .populate('resolvedBy', 'name')
+      .populate('communityReplies.repliedBy', 'name');
+
     if (promoted) {
       if (io) io.emit('issue:resolved', { issueId: issue._id, queryText: issue.queryText });
-      return res.json({ code: 'AUTO_PROMOTED', sp: 55, message: '3 upvotes reached — answer auto-promoted', issue: updatedIssue });
+      return res.json({ code: 'AUTO_PROMOTED', sp: 55, message: '3 upvotes reached — answer auto-promoted', issue: finalIssue });
     }
 
-    res.json({ code: 'SUBMITTED', sp: 5, message: 'Answer submitted — 3 upvotes to auto-resolve', issue: updatedIssue });
+    res.json({ code: 'SUBMITTED', sp: 5, message: 'Answer submitted — 3 upvotes to auto-resolve', issue: finalIssue });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -616,17 +625,17 @@ router.patch('/issues/:id/vote', auth, async (req, res) => {
     let spDelta = 0;
 
     if (type === 'up') {
-      const alreadyUpvoted = issue.upvotedBy.some(id => id.equals(userId));
+      const alreadyUpvoted = issue.upvotedBy.some(id => String(id) === String(userId));
       if (alreadyUpvoted) {
         // Undo upvote
-        issue.upvotedBy = issue.upvotedBy.filter(id => !id.equals(userId));
+        issue.upvotedBy = issue.upvotedBy.filter(id => String(id) !== String(userId));
         issue.upvoteCount -= 1;
         spDelta = -5;
       } else {
-        const alreadyDownvoted = issue.downvotedBy.some(id => id.equals(userId));
+        const alreadyDownvoted = issue.downvotedBy.some(id => String(id) === String(userId));
         if (alreadyDownvoted) {
           // Downvote to upvote
-          issue.downvotedBy = issue.downvotedBy.filter(id => !id.equals(userId));
+          issue.downvotedBy = issue.downvotedBy.filter(id => String(id) !== String(userId));
           issue.upvotedBy.push(userId);
           issue.upvoteCount += 2;
           spDelta = 10;
@@ -638,17 +647,17 @@ router.patch('/issues/:id/vote', auth, async (req, res) => {
         }
       }
     } else { // type === 'down'
-      const alreadyDownvoted = issue.downvotedBy.some(id => id.equals(userId));
+      const alreadyDownvoted = issue.downvotedBy.some(id => String(id) === String(userId));
       if (alreadyDownvoted) {
         // Undo downvote
-        issue.downvotedBy = issue.downvotedBy.filter(id => !id.equals(userId));
+        issue.downvotedBy = issue.downvotedBy.filter(id => String(id) !== String(userId));
         issue.upvoteCount += 1;
         spDelta = 5;
       } else {
-        const alreadyUpvoted = issue.upvotedBy.some(id => id.equals(userId));
+        const alreadyUpvoted = issue.upvotedBy.some(id => String(id) === String(userId));
         if (alreadyUpvoted) {
           // Upvote to downvote
-          issue.upvotedBy = issue.upvotedBy.filter(id => !id.equals(userId));
+          issue.upvotedBy = issue.upvotedBy.filter(id => String(id) !== String(userId));
           issue.downvotedBy.push(userId);
           issue.upvoteCount -= 2;
           spDelta = -10;
@@ -673,7 +682,12 @@ router.patch('/issues/:id/vote', auth, async (req, res) => {
     escalationBus.emit('issue:upvoted', issue, io);
     if (io) io.emit('issue:upvoted', { issueId: issue._id, upvoteCount: issue.upvoteCount });
     
-    res.json(issue);
+    const finalIssue = await OAQIssue.findById(issue._id)
+      .populate('raisedBy', 'name')
+      .populate('resolvedBy', 'name')
+      .populate('communityReplies.repliedBy', 'name');
+
+    res.json(finalIssue);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -694,13 +708,19 @@ router.patch('/issues/:id/duplicate', auth, async (req, res) => {
     const duplicateOf = await OAQIssue.findById(duplicateOfId);
     if (!duplicateOf) return res.status(404).json({ message: 'Target issue not found' });
 
-    const issue = await OAQIssue.findByIdAndUpdate(
+    await OAQIssue.findByIdAndUpdate(
       req.params.id,
       { status: 'Duplicate', duplicateOf: duplicateOfId },
       { new: true }
     );
-    if (io) io.emit('issue:marked-duplicate', { issueId: issue._id, duplicateOfId });
-    res.json(issue);
+    if (io) io.emit('issue:marked-duplicate', { issueId: req.params.id, duplicateOfId });
+
+    const finalIssue = await OAQIssue.findById(req.params.id)
+      .populate('raisedBy', 'name')
+      .populate('resolvedBy', 'name')
+      .populate('communityReplies.repliedBy', 'name');
+
+    res.json(finalIssue);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -714,14 +734,20 @@ router.patch('/:id/upvote', auth, async (req, res) => {
 
 router.patch('/issues/:id/mentor-signoff', auth, requireRole('mentor', 'admin'), async (req, res) => {
   try {
-    const issue = await OAQIssue.findByIdAndUpdate(
+    await OAQIssue.findByIdAndUpdate(
       req.params.id,
       { status: 'Resolved' },
       { new: true }
     );
     const io = req.app.get('io');
-    if (io) io.emit('issue:resolved', { issueId: issue._id, queryText: issue.queryText });
-    res.json(issue);
+    if (io) io.emit('issue:resolved', { issueId: req.params.id, queryText: req.body.queryText });
+
+    const finalIssue = await OAQIssue.findById(req.params.id)
+      .populate('raisedBy', 'name')
+      .populate('resolvedBy', 'name')
+      .populate('communityReplies.repliedBy', 'name');
+
+    res.json(finalIssue);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

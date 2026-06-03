@@ -215,23 +215,29 @@ export default function TrackerPage() {
                         )}
                       </td>
                       <td>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                           <button 
-                            className="upvote-btn" 
-                            style={{ padding: '2px 6px', fontSize: 10, background: 'none', border: '1px solid var(--color-border)', borderRadius: 3, cursor: 'pointer' }}
-                            onClick={(e) => { e.stopPropagation(); handleVoteQuery(issue._id, 'up'); }}
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              handleVoteQuery(issue._id, 'up'); 
+                            }}
+                            style={{
+                              background: issue.upvotedBy?.some(id => String(id?._id || id) === String(user?._id || user)) ? 'var(--color-teal)' : 'transparent',
+                              color: issue.upvotedBy?.some(id => String(id?._id || id) === String(user?._id || user)) ? 'var(--color-inv-text)' : 'var(--color-text-muted)',
+                              border: '1px solid var(--color-border)',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '11px',
+                              fontWeight: '700',
+                              padding: '4px 8px',
+                              fontFamily: 'var(--font-mono)',
+                              transition: 'all 0.2s ease',
+                              minWidth: '28px',
+                              textAlign: 'center',
+                            }}
+                            title={issue.upvotedBy?.some(id => String(id?._id || id) === String(user?._id || user)) ? "Remove vote" : "Upvote"}
                           >
-                            ▲
-                          </button>
-                          <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', fontWeight: 'bold', color: issue.upvoteCount > 0 ? 'var(--color-teal)' : issue.upvoteCount < 0 ? 'var(--color-red)' : 'var(--color-text-muted)' }}>
-                            {issue.upvoteCount}
-                          </span>
-                          <button 
-                            className="upvote-btn" 
-                            style={{ padding: '2px 6px', fontSize: 10, background: 'none', border: '1px solid var(--color-border)', borderRadius: 3, cursor: 'pointer' }}
-                            onClick={(e) => { e.stopPropagation(); handleVoteQuery(issue._id, 'down'); }}
-                          >
-                            ▼
+                            {issue.upvoteCount || 0}
                           </button>
                         </div>
                       </td>
