@@ -7,11 +7,17 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 
 export default function AccordionDrawer({ entry, isOpen, sessionHistory, onViewRecRelated }) {
-  const [voiceActive, setVoiceActive] = useState(false);
-  const [upvotes, setUpvotes] = useState(entry.upvoteCount || 0);
-  const [upvoted, setUpvoted] = useState(false);
   const { user, token } = useAuth();
   const { addToast } = useToast();
+  const [voiceActive, setVoiceActive] = useState(false);
+  const [upvotes, setUpvotes] = useState(entry.upvoteCount || 0);
+  const [userVote, setUserVote] = useState(() => {
+    const userId = user?._id;
+    if (!userId) return null;
+    if (entry.upvotedBy?.some(id => id === userId || id?._id === userId)) return 'up';
+    if (entry.downvotedBy?.some(id => id === userId || id?._id === userId)) return 'down';
+    return null;
+  });
   const didRecord = useRef(false);
 
   // Record co-occurrence for recommendation engine
@@ -38,13 +44,16 @@ export default function AccordionDrawer({ entry, isOpen, sessionHistory, onViewR
     setVoiceActive(v => !v);
   };
 
-  const handleUpvote = async () => {
-    if (!user) { addToast('Sign in to upvote'); return; }
-    if (upvoted) return;
+  const handleVote = async (type) => {
+    if (!user) { addToast(`Sign in to ${type}vote`); return; }
     try {
-      const updated = await api.patch(`/oaq/issues/${entry._id}/upvote`);
+      const updated = await api.patch(`/oaq/issues/${entry._id}/vote`, { type });
       setUpvotes(updated.upvoteCount);
-      setUpvoted(true);
+      if (type === 'up') {
+        setUserVote(prev => prev === 'up' ? null : 'up');
+      } else {
+        setUserVote(prev => prev === 'down' ? null : 'down');
+      }
     } catch (err) {
       addToast(err.message, { type: 'error' });
     }
@@ -73,9 +82,25 @@ export default function AccordionDrawer({ entry, isOpen, sessionHistory, onViewR
       )}
 
       <div className="accordion-drawer-meta">
-        <button className="upvote-btn" onClick={handleUpvote} disabled={upvoted}>
-          ▲ {upvotes} {upvoted ? '(voted)' : 'Upvote'}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--color-surface-hover)', borderRadius: 'var(--radius)', padding: '2px 6px', border: '1px solid var(--color-border)' }}>
+          <button 
+            className="upvote-btn" 
+            style={{ border: 'none', background: 'none', cursor: 'pointer', color: userVote === 'up' ? 'var(--color-teal)' : 'var(--color-text-muted)', fontWeight: userVote === 'up' ? 'bold' : 'normal' }}
+            onClick={() => handleVote('up')}
+          >
+            ▲ Upvote
+          </button>
+          <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', fontWeight: 'bold', color: upvotes > 0 ? 'var(--color-teal)' : upvotes < 0 ? 'var(--color-red)' : 'var(--color-text-muted)', padding: '0 4px' }}>
+            {upvotes}
+          </span>
+          <button 
+            className="upvote-btn" 
+            style={{ border: 'none', background: 'none', cursor: 'pointer', color: userVote === 'down' ? 'var(--color-red)' : 'var(--color-text-muted)', fontWeight: userVote === 'down' ? 'bold' : 'normal' }}
+            onClick={() => handleVote('down')}
+          >
+            ▼ Downvote
+          </button>
+        </div>
         {entry.answer && (
           <button className={`voice-btn ${voiceActive ? 'active' : ''}`} onClick={handleVoice}>
             {voiceActive ? '◼ Stop' : '▶ Listen'} (en-IN)

@@ -221,7 +221,8 @@ router.get('/tracker', async (req, res) => {
     const issues = await OAQIssue.find({ isBaseline: false })
       .sort({ isPinned: -1, priority: -1, createdAt: -1 })
       .populate('raisedBy', 'name')
-      .populate('resolvedBy', 'name');
+      .populate('resolvedBy', 'name')
+      .populate('communityReplies.repliedBy', 'name');
     res.json(issues);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -585,20 +586,92 @@ router.get('/moderation-queue', auth, requireRole('mentor', 'admin', 'superadmin
   }
 });
 
-router.patch('/issues/:id/upvote', auth, async (req, res) => {
+router.patch('/issues/:id/vote', auth, async (req, res) => {
   const io = req.app.get('io');
+  const userId = req.user._id;
+  const { type } = req.body;
+  if (type !== 'up' && type !== 'down') {
+    return res.status(400).json({ message: 'type must be up or down' });
+  }
+
   try {
-    const issue = await OAQIssue.findByIdAndUpdate(
-      req.params.id,
-      { $inc: { upvoteCount: 1 } },
-      { new: true }
-    );
+    const issue = await OAQIssue.findById(req.params.id);
+    if (!issue) return res.status(404).json({ message: 'Issue not found' });
+
+    issue.upvotedBy = issue.upvotedBy || [];
+    issue.downvotedBy = issue.downvotedBy || [];
+
+    const creatorId = issue.raisedBy;
+    let spDelta = 0;
+
+    if (type === 'up') {
+      const alreadyUpvoted = issue.upvotedBy.some(id => id.equals(userId));
+      if (alreadyUpvoted) {
+        // Undo upvote
+        issue.upvotedBy = issue.upvotedBy.filter(id => !id.equals(userId));
+        issue.upvoteCount -= 1;
+        spDelta = -5;
+      } else {
+        const alreadyDownvoted = issue.downvotedBy.some(id => id.equals(userId));
+        if (alreadyDownvoted) {
+          // Downvote to upvote
+          issue.downvotedBy = issue.downvotedBy.filter(id => !id.equals(userId));
+          issue.upvotedBy.push(userId);
+          issue.upvoteCount += 2;
+          spDelta = 10;
+        } else {
+          // New upvote
+          issue.upvotedBy.push(userId);
+          issue.upvoteCount += 1;
+          spDelta = 5;
+        }
+      }
+    } else { // type === 'down'
+      const alreadyDownvoted = issue.downvotedBy.some(id => id.equals(userId));
+      if (alreadyDownvoted) {
+        // Undo downvote
+        issue.downvotedBy = issue.downvotedBy.filter(id => !id.equals(userId));
+        issue.upvoteCount += 1;
+        spDelta = 5;
+      } else {
+        const alreadyUpvoted = issue.upvotedBy.some(id => id.equals(userId));
+        if (alreadyUpvoted) {
+          // Upvote to downvote
+          issue.upvotedBy = issue.upvotedBy.filter(id => !id.equals(userId));
+          issue.downvotedBy.push(userId);
+          issue.upvoteCount -= 2;
+          spDelta = -10;
+        } else {
+          // New downvote
+          issue.downvotedBy.push(userId);
+          issue.upvoteCount -= 1;
+          spDelta = -5;
+        }
+      }
+    }
+
+    await issue.save();
+
+    if (spDelta !== 0 && creatorId) {
+      const reason = spDelta > 0 
+        ? `Query votes increased (Issue #${issue.issueId})` 
+        : `Query votes decreased (Issue #${issue.issueId})`;
+      await awardSP(creatorId, spDelta, reason, issue._id, 'QUERY_BONUS');
+    }
+
     escalationBus.emit('issue:upvoted', issue, io);
     if (io) io.emit('issue:upvoted', { issueId: issue._id, upvoteCount: issue.upvoteCount });
+    
     res.json(issue);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
+});
+
+router.patch('/issues/:id/upvote', auth, async (req, res) => {
+  req.body = { type: 'up' };
+  req.url = `/issues/${req.params.id}/vote`;
+  router.handle(req, res);
 });
 
 router.patch('/issues/:id/duplicate', auth, async (req, res) => {

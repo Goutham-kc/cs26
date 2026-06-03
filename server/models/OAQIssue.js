@@ -27,6 +27,8 @@ const OAQIssueSchema = new Schema({
   isPinned:     { type: Boolean, default: false },
   isFeatured:   { type: Boolean, default: false },
   upvoteCount:  { type: Number, default: 1 },
+  upvotedBy:    { type: [{ type: ObjectId, ref: 'User' }], default: [] },
+  downvotedBy:  { type: [{ type: ObjectId, ref: 'User' }], default: [] },
   resolvedBy:   { type: ObjectId, ref: 'User', default: null },
   raisedBy:     { type: ObjectId, ref: 'User', required: true },
   lockedBy:     { type: ObjectId, ref: 'User', default: null },
