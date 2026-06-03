@@ -8,6 +8,7 @@ const CommunityReplySchema = new Schema({
   isPromoted:        { type: Boolean, default: false },
   upvotes:           { type: Number, default: 0 },
   downvotes:         { type: Number, default: 0 },
+  upvotedBy:         { type: [{ type: ObjectId, ref: 'User' }], default: [] },
   isPendingModeration:{ type: Boolean, default: false },
   isFlagged:         { type: Boolean, default: false },
   flaggedBy:         { type: ObjectId, ref: 'User' },

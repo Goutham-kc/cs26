@@ -24,7 +24,7 @@ export default function OpenQueryCard({ issue, currentUser, onVote }) {
     try {
       const result = await oaq.voteReply(issue._id, replyId, type);
       if (result.code === 'AUTO_PROMOTED') addToast('Answer promoted to resolved! +50 SP awarded', { type: 'success' });
-      onVote();
+      onVote(result.issue);
     } catch (e) {
       addToast(e.message, { type: 'error' });
     } finally {
@@ -105,13 +105,41 @@ export default function OpenQueryCard({ issue, currentUser, onVote }) {
       {isExpanded && (
         <>
           {(issue.communityReplies || []).map(reply => {
-            const score = (reply.upvotes || 0) - (reply.downvotes || 0);
+            const hasVoted = reply.upvotedBy?.some(id => {
+              const currentId = currentUser?._id || currentUser;
+              const voterId = id?._id || id;
+              return currentId && voterId && String(voterId) === String(currentId);
+            });
             return (
               <div key={reply._id} style={{ padding: '10px 18px', borderTop: '1px solid var(--color-border)', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, minWidth: 30 }}>
-                  <button onClick={() => handleVote(reply._id, 'up')} disabled={votingId === reply._id} style={{ background: 'none', border: '1px solid var(--color-border)', borderRadius: 3, cursor: 'pointer', fontSize: 11, padding: '2px 5px', color: 'var(--color-text-muted)' }}>▲</button>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: score > 0 ? 'var(--color-teal)' : score < 0 ? 'var(--color-red)' : 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>{score}</span>
-                  <button onClick={() => handleVote(reply._id, 'down')} disabled={votingId === reply._id} style={{ background: 'none', border: '1px solid var(--color-border)', borderRadius: 3, cursor: 'pointer', fontSize: 11, padding: '2px 5px', color: 'var(--color-text-muted)' }}>▼</button>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 32 }}>
+                  <button
+                    onClick={() => {
+                      if (!currentUser) {
+                        addToast('Sign in to vote', { type: 'error' });
+                        return;
+                      }
+                      handleVote(reply._id, 'up');
+                    }}
+                    disabled={votingId === reply._id}
+                    title={hasVoted ? "Remove vote" : "Upvote"}
+                    style={{
+                      background: hasVoted ? 'var(--color-teal)' : 'transparent',
+                      color: hasVoted ? 'var(--color-inv-text)' : 'var(--color-text-muted)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '11px',
+                      fontWeight: '700',
+                      padding: '4px 8px',
+                      fontFamily: 'var(--font-mono)',
+                      transition: 'all 0.2s ease',
+                      minWidth: '28px',
+                      textAlign: 'center',
+                    }}
+                  >
+                    {reply.upvotes || 0}
+                  </button>
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 3, fontFamily: 'var(--font-mono)' }}>

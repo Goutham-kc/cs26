@@ -88,7 +88,11 @@ export default function TrackerPage() {
       if (result.code === 'AUTO_PROMOTED') {
         addToast('Answer promoted to resolved! +50 SP awarded', { type: 'success' });
       }
-      load();
+      if (result.issue) {
+        setIssues(prev => prev.map(q => q._id === issueId ? result.issue : q));
+      } else {
+        load();
+      }
     } catch (err) {
       addToast(err.message, { type: 'error' });
     }
@@ -270,24 +274,33 @@ export default function TrackerPage() {
                               {(issue.communityReplies || []).length > 0 ? (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                                   {(issue.communityReplies || []).map(reply => {
-                                    const score = (reply.upvotes || 0) - (reply.downvotes || 0);
+                                    const hasVoted = reply.upvotedBy?.some(id => {
+                                      const currentId = user?._id || user;
+                                      const voterId = id?._id || id;
+                                      return currentId && voterId && String(voterId) === String(currentId);
+                                    });
                                     return (
                                       <div key={reply._id} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '10px 14px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius)' }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, minWidth: 30 }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 32 }}>
                                           <button 
                                             onClick={(e) => { e.stopPropagation(); handleReplyVote(issue._id, reply._id, 'up'); }} 
-                                            style={{ background: 'none', border: '1px solid var(--color-border)', borderRadius: 3, cursor: 'pointer', fontSize: 10, padding: '2px 4px', color: 'var(--color-text-muted)' }}
+                                            style={{
+                                              background: hasVoted ? 'var(--color-teal)' : 'transparent',
+                                              color: hasVoted ? 'var(--color-inv-text)' : 'var(--color-text-muted)',
+                                              border: '1px solid var(--color-border)',
+                                              borderRadius: '4px',
+                                              cursor: 'pointer',
+                                              fontSize: '11px',
+                                              fontWeight: '700',
+                                              padding: '4px 8px',
+                                              fontFamily: 'var(--font-mono)',
+                                              transition: 'all 0.2s ease',
+                                              minWidth: '28px',
+                                              textAlign: 'center',
+                                            }}
+                                            title={hasVoted ? "Remove vote" : "Upvote"}
                                           >
-                                            ▲
-                                          </button>
-                                          <span style={{ fontSize: 12, fontWeight: 700, color: score > 0 ? 'var(--color-teal)' : score < 0 ? 'var(--color-red)' : 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>
-                                            {score}
-                                          </span>
-                                          <button 
-                                            onClick={(e) => { e.stopPropagation(); handleReplyVote(issue._id, reply._id, 'down'); }} 
-                                            style={{ background: 'none', border: '1px solid var(--color-border)', borderRadius: 3, cursor: 'pointer', fontSize: 10, padding: '2px 4px', color: 'var(--color-text-muted)' }}
-                                          >
-                                            ▼
+                                            {reply.upvotes || 0}
                                           </button>
                                         </div>
                                         <div style={{ flex: 1 }}>

@@ -4,6 +4,7 @@ import BaselineOAQ from '../components/BaselineOAQ';
 import AccordionDrawer from '../components/AccordionDrawer';
 import SectionFilter from '../components/SectionFilter';
 import RaiseQueryModal from '../components/RaiseQueryModal';
+import OpenQueryCard from '../components/OpenQueryCard';
 import { api, oaq, getMyIssues } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
@@ -283,7 +284,22 @@ export default function HomePage() {
                   </div>
                 )}
                 {openQueries.map(issue => (
-                  <OpenQueryCard key={issue._id} issue={issue} currentUser={user} onVote={() => loadOpenQueries()} />
+                  <OpenQueryCard 
+                    key={issue._id} 
+                    issue={issue} 
+                    currentUser={user} 
+                    onVote={(updatedIssue) => {
+                      if (updatedIssue) {
+                        if (updatedIssue.status === 'Resolved') {
+                          setOpenQueries(prev => prev.filter(q => q._id !== updatedIssue._id));
+                        } else {
+                          setOpenQueries(prev => prev.map(q => q._id === updatedIssue._id ? updatedIssue : q));
+                        }
+                      } else {
+                        loadOpenQueries();
+                      }
+                    }} 
+                  />
                 ))}
               </div>
             )}

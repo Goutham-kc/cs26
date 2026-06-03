@@ -461,32 +461,43 @@ router.post('/issues/:id/reply', auth, async (req, res) => {
 
 router.patch('/issues/:id/replies/:replyId/vote', auth, async (req, res) => {
   const io = req.app.get('io');
+  const userId = req.user._id;
   try {
-    const { type } = req.body;
-    if (!['up', 'down'].includes(type)) return res.status(400).json({ message: 'type must be up or down' });
-
     const issue = await OAQIssue.findById(req.params.id);
     if (!issue) return res.status(404).json({ message: 'Issue not found' });
 
     const reply = issue.communityReplies.id(req.params.replyId);
     if (!reply) return res.status(404).json({ message: 'Reply not found' });
 
-    const inc = type === 'up' ? { upvotes: 1 } : { downvotes: 1 };
-    await OAQIssue.updateOne(
-      { _id: issue._id, 'communityReplies._id': reply._id },
-      { $inc: inc }
-    );
-
-    const updatedIssue = await OAQIssue.findById(req.params.id);
-    const updatedReply = updatedIssue.communityReplies.id(req.params.replyId);
-
-    const promoted = await checkAutoPromote(updatedIssue);
-    if (promoted) {
-      if (io) io.emit('issue:resolved', { issueId: issue._id, queryText: issue.queryText });
-      return res.json({ code: 'AUTO_PROMOTED', message: 'Reply auto-promoted by community votes', issue: updatedIssue });
+    if (!reply.upvotedBy) {
+      reply.upvotedBy = [];
     }
 
-    res.json({ reply: updatedReply, issue: updatedIssue });
+    const alreadyUpvoted = reply.upvotedBy.some(id => id.equals(userId));
+
+    if (alreadyUpvoted) {
+      // Remove upvote
+      reply.upvotedBy = reply.upvotedBy.filter(id => !id.equals(userId));
+      reply.upvotes = Math.max(0, (reply.upvotes || 0) - 1);
+    } else {
+      // Add upvote
+      reply.upvotedBy.push(userId);
+      reply.upvotes = (reply.upvotes || 0) + 1;
+    }
+
+    await issue.save();
+
+    const promoted = await checkAutoPromote(issue);
+    if (promoted) {
+      const resolvedIssue = await OAQIssue.findById(issue._id);
+      if (io) io.emit('issue:resolved', { issueId: issue._id, queryText: issue.queryText });
+      return res.json({ code: 'AUTO_PROMOTED', message: 'Reply auto-promoted by community votes', issue: resolvedIssue });
+    }
+
+    const finalIssue = await OAQIssue.findById(issue._id);
+    const finalReply = finalIssue.communityReplies.id(reply._id);
+
+    res.json({ reply: finalReply, issue: finalIssue });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
