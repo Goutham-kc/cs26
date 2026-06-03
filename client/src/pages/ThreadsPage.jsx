@@ -8,7 +8,7 @@ import { ThreadCloseModal } from '../components/SharedModals';
 const SECTION_LABELS = {
   '01': 'ViBe', '02': 'NOC', '03': 'Teams', '04': 'Onboarding',
   '05': 'Reports', '06': 'Finance', '07': 'Schedule', '08': 'Lab',
-  '09': 'Eval', '10': 'SP', '11': 'Yaksha', '12': 'Tracker', '13': 'General'
+  '09': 'Eval', '10': 'SP', '11': 'Yaksha', '12': 'Resolver', '13': 'General'
 };
 
 function timeAgo(dateStr) {
@@ -691,7 +691,7 @@ return (
               Threads
             </h1>
             <p style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
-              Discuss queries, issues, and problems — for threaded conversations only. Not for FCFS resolution (use Tracker for that).
+              Discuss queries, issues, and problems — for threaded conversations only. Not for FCFS resolution (use Resolver for that).
             </p>
           </div>
           {user && (

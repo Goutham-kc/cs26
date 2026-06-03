@@ -6,7 +6,7 @@ const SECTION_NAMES = {
   '01': 'ViBe Platform', '02': 'NOC System', '03': 'Team Formation',
   '04': 'Onboarding', '05': 'Reports & Submissions', '06': 'Stipend & Finance',
   '07': 'Schedule & Attendance', '08': 'Lab Infrastructure', '09': 'Evaluation & Grading',
-  '10': 'SP & Gamification', '11': 'Yaksha-mini', '12': 'OAQ Tracker', '13': 'General / Other'
+  '10': 'SP & Gamification', '11': 'Yaksha-mini', '12': 'OAQ Resolver', '13': 'General / Other'
 };
 
 const SORT_OPTIONS = [
@@ -77,7 +77,7 @@ export default function BaselineOAQ({ filteredSections }) {
     <section style={{ marginBottom: 32 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
         <p className="section-label" style={{ margin: 0 }}>
-          Baseline OAQ — {visible.length} of {entries.length} Entries · Always Visible · No Login Required
+          OAQ Library — {visible.length} of {entries.length} Entries · Always Visible · No Login Required
         </p>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           

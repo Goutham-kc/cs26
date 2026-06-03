@@ -4,6 +4,7 @@ import BaselineOAQ from '../components/BaselineOAQ';
 import AccordionDrawer from '../components/AccordionDrawer';
 import SectionFilter from '../components/SectionFilter';
 import RaiseQueryModal from '../components/RaiseQueryModal';
+import OpenQueryCard from '../components/OpenQueryCard';
 import { api, oaq, getMyIssues } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
@@ -198,7 +199,7 @@ export default function HomePage() {
               <div className="empty-state">
                 <div style={{ fontSize: 36, marginBottom: 8 }}>🔍</div>
                 <strong>No results found</strong>
-                If this is a genuinely new query, raise it in the Tracker.
+                If this is a genuinely new query, raise it in the Resolver.
                 {user && <><br /><button className="btn btn-primary" style={{ marginTop: 12 }} onClick={() => setShowRaise(true)}>+ Raise Query</button></>}
               </div>
             )}
@@ -258,7 +259,7 @@ export default function HomePage() {
           <>
             <div className="tabs">
               <button className={`tab-btn ${tab === 'baseline' ? 'active' : ''}`} onClick={() => setTab('baseline')}>
-                Baseline OAQ
+                OAQ Library
               </button>
               <button className={`tab-btn ${tab === 'trending' ? 'active' : ''}`} onClick={() => setTab('trending')}>
                 Top-15 Trending
@@ -279,11 +280,26 @@ export default function HomePage() {
                   <div className="empty-state">
                     <div style={{ fontSize: 36, marginBottom: 8 }}>💬</div>
                     <strong>No open queries with answers yet</strong>
-                    Be the first to submit an answer in the Tracker tab.
+                    Be the first to submit an answer in the Resolver tab.
                   </div>
                 )}
                 {openQueries.map(issue => (
-                  <OpenQueryCard key={issue._id} issue={issue} currentUser={user} onVote={() => loadOpenQueries()} />
+                  <OpenQueryCard 
+                    key={issue._id} 
+                    issue={issue} 
+                    currentUser={user} 
+                    onVote={(updatedIssue) => {
+                      if (updatedIssue) {
+                        if (updatedIssue.status === 'Resolved') {
+                          setOpenQueries(prev => prev.filter(q => q._id !== updatedIssue._id));
+                        } else {
+                          setOpenQueries(prev => prev.map(q => q._id === updatedIssue._id ? updatedIssue : q));
+                        }
+                      } else {
+                        loadOpenQueries();
+                      }
+                    }} 
+                  />
                 ))}
               </div>
             )}
