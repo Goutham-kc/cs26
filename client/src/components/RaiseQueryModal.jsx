@@ -1,8 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
+import { useAuth } from '../context/AuthContext';
+
+const SECTION_LABELS = {
+  '01': 'ViBe', '02': 'NOC', '03': 'Teams', '04': 'Onboarding',
+  '05': 'Reports', '06': 'Finance', '07': 'Schedule', '08': 'Lab',
+  '09': 'Eval', '10': 'SP', '11': 'Yaksha', '12': 'Tracker', '13': 'General'
+};
 
 export default function RaiseQueryModal({ onClose, onCreated }) {
+  const { token } = useAuth();
   const [sections, setSections] = useState([]);
   const [queryText, setQueryText] = useState('');
   const [categoryTag, setCategoryTag] = useState('');
@@ -22,13 +30,18 @@ export default function RaiseQueryModal({ onClose, onCreated }) {
     simTimer.current = setTimeout(async () => {
       setSimilarLoading(true);
       try {
-        const results = await api.get(`/oaq/search?q=${encodeURIComponent(queryText)}`);
-        setSimilar(results.slice(0, 3));
+        const res = await fetch(`/api/oaq/check-duplicate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ queryText: queryText.trim() }),
+        });
+        const data = await res.json();
+        setSimilar(data.duplicates || []);
       } catch { setSimilar([]); }
       finally { setSimilarLoading(false); }
-    }, 500);
+    }, 400);
     return () => clearTimeout(simTimer.current);
-  }, [queryText]);
+  }, [queryText, token]);
 
   const handleSubmit = async () => {
     if (!queryText.trim() || !categoryTag) {
@@ -71,10 +84,28 @@ export default function RaiseQueryModal({ onClose, onCreated }) {
         )}
         {!similarLoading && similar.length > 0 && (
           <div style={{ marginBottom: 16, padding: '10px 14px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', borderLeft: '3px solid #f59e0b' }}>
-            <div style={{ fontSize: 10, fontWeight: 600, color: '#f59e0b', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>⚠ Similar queries already exist</div>
+            <div style={{ fontSize: 10, fontWeight: 600, color: '#f59e0b', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
+              ⚠ {similar.length} similar {similar.length === 1 ? 'query' : 'queries'} found — check before raising
+            </div>
             {similar.map(s => (
-              <div key={s._id} style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 4, lineHeight: 1.4 }}>
-                §{s.categoryTag} — {s.queryText}
+              <div key={s._id} style={{ marginBottom: 8, paddingBottom: 8, borderBottom: '1px solid var(--color-border)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 2 }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-primary)', flex: 1 }}>{s.queryText}</span>
+                  {s.isBaseline && (
+                    <span style={{ fontSize: 9, background: '#6366f1', color: '#fff', padding: '1px 5px', borderRadius: 3, marginLeft: 6, flexShrink: 0 }}>FAQ</span>
+                  )}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>
+                    §{s.categoryTag} — {SECTION_LABELS[s.categoryTag] || s.categoryTag} &nbsp;·&nbsp; {s.status}
+                  </span>
+                  <span style={{
+                    fontSize: 10, fontWeight: 700,
+                    color: s.matchScore >= 70 ? '#ef4444' : s.matchScore >= 50 ? '#f59e0b' : '#10b981'
+                  }}>
+                    {s.matchScore}% match
+                  </span>
+                </div>
               </div>
             ))}
           </div>

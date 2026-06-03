@@ -114,6 +114,7 @@ oaq-system/
         │   ├── RaiseQueryModal.jsx# Modal for raising new queries
         │   ├── ResolveModal.jsx  # Resolution submission modal
         │   ├── SharedModals.jsx  # Reusable ConfirmModal, InputModal, SPAdjustModal, ThreadCloseModal
+        │   ├── RAGChatWidget.jsx# Floating AI chat with streaming text and knowledge base RAG
         │   └── YakshaViewport.jsx# Content quality audit display
         └── pages/
             ├── HomePage.jsx      # OAQ main portal with search and trending
@@ -126,7 +127,7 @@ oaq-system/
 
 ## Features Implemented
 
-### Core Features (13 Total)
+### Core Features (15 Total)
 1. **13 Locked Onboarding FAQ Baseline Accordions** — Read-only onboarding FAQ center
 2. **FCFS Query Resolution Tracker** — Gamified dynamic tracking board
 3. **Automated Content Quality Auditor (Yaksha-mini)** — Auto-checks answer quality
@@ -140,12 +141,16 @@ oaq-system/
 11. **Dynamic Section Filters** — Multi-select category filtering
 12. **Admin Moderation & Management Panel** — Dashboard for admins
 13. **Real-Time Sync Broadcaster** — Socket.io instant synchronization
+14. **Duplicate Query Prevention** — Dual-algorithm similarity scoring before raising queries
+15. **Yaksha Mini AI Chat Widget** — Streaming RAG assistant backed by the FAQ knowledge base
 
 ### Navigation & UI
 - **React Router** — URL-based navigation with browser history support
 - **Dark/Light Mode** — CSS variable-based theming
 - **Modal System** — ConfirmModal, InputModal, SPAdjustModal, ThreadCloseModal
 - **Toast Notifications** — In-app notification stack
+- **Duplicate Query Prevention** — Similarity-scored duplicate warning panel with match %, FAQ badge, and section tag before raising queries
+- **RAG AI Chat Widget** — Floating 🤖 assistant with streaming GPT-3.5 responses backed by the FAQ knowledge base (falls back to keyword-matched Q&A when no API key is set)
 
 ---
 
@@ -182,10 +187,18 @@ oaq-system/
 
 ### 5. Admin & Moderation Operations (`/api/admin`)
 - `GET /api/admin/stats` - Fetch overall metrics (total issues, top holders, activity log).
+
+### 6. RAG AI Chat (`/api/rag`)
+- `POST /api/rag/chat` - Streaming RAG chat endpoint. Sends message history, retrieves relevant Q&A context from the knowledge base using MongoDB text search, and streams GPT-3.5-turbo responses. Falls back to knowledge-base-only answers if `OPENAI_API_KEY` is not set in `.env`.
+
+### 7. Admin & Moderation Operations (`/api/admin`)
 - `GET /api/admin/issues` - Paginated admin queries list with Pin/Feature/Delete triggers.
 - `GET /api/admin/users` - List all system accounts.
 - `POST /api/admin/users` - Direct creation of system accounts (Superadmin only).
 - `PATCH /api/admin/users/:id` - Adjust SP bank ledger balances or roles (Superadmin only).
+
+### 8. Duplicate Query Prevention (`/api/oaq`)
+- `POST /api/oaq/check-duplicate` - Similarity-scored duplicate check. Accepts `{ queryText }`, runs dual-algorithm scoring (word-level 50% + character overlap 50%) against all non-Duplicate issues, returns top 5 matches with matchScore percentage above 35% threshold.
 
 ---
 

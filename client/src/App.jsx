@@ -8,6 +8,7 @@ import TrackerPage from './pages/TrackerPage';
 import ThreadsPage from './pages/ThreadsPage';
 import AdminPage from './pages/AdminPage';
 import UserProfileModal from './components/UserProfileModal';
+import RAGChatWidget from './components/RAGChatWidget';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import { ToastProvider, useToast } from './context/ToastContext';
@@ -115,6 +116,7 @@ function Shell() {
       {profileUserId && (
         <UserProfileModal userId={profileUserId} onClose={() => setProfileUserId(null)} />
       )}
+      <RAGChatWidget />
     </>
   );
 }
