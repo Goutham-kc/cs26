@@ -477,11 +477,11 @@ router.patch('/issues/:id/replies/:replyId/vote', auth, async (req, res) => {
       reply.upvotedBy = [];
     }
 
-    const alreadyUpvoted = reply.upvotedBy.some(id => id.equals(userId));
+    const alreadyUpvoted = reply.upvotedBy.some(id => String(id) === String(userId));
 
     if (alreadyUpvoted) {
       // Remove upvote
-      reply.upvotedBy = reply.upvotedBy.filter(id => !id.equals(userId));
+      reply.upvotedBy = reply.upvotedBy.filter(id => String(id) !== String(userId));
       reply.upvotes = Math.max(0, (reply.upvotes || 0) - 1);
     } else {
       // Add upvote
@@ -493,12 +493,18 @@ router.patch('/issues/:id/replies/:replyId/vote', auth, async (req, res) => {
 
     const promoted = await checkAutoPromote(issue);
     if (promoted) {
-      const resolvedIssue = await OAQIssue.findById(issue._id);
+      const resolvedIssue = await OAQIssue.findById(issue._id)
+        .populate('raisedBy', 'name')
+        .populate('resolvedBy', 'name')
+        .populate('communityReplies.repliedBy', 'name');
       if (io) io.emit('issue:resolved', { issueId: issue._id, queryText: issue.queryText });
       return res.json({ code: 'AUTO_PROMOTED', message: 'Reply auto-promoted by community votes', issue: resolvedIssue });
     }
 
-    const finalIssue = await OAQIssue.findById(issue._id);
+    const finalIssue = await OAQIssue.findById(issue._id)
+      .populate('raisedBy', 'name')
+      .populate('resolvedBy', 'name')
+      .populate('communityReplies.repliedBy', 'name');
     const finalReply = finalIssue.communityReplies.id(reply._id);
 
     res.json({ reply: finalReply, issue: finalIssue });

@@ -312,7 +312,7 @@ export default function TrackerPage() {
                                         <div style={{ flex: 1 }}>
                                           <div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 4, display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-mono)' }}>
                                             <strong>{reply.repliedBy?.name || 'Unknown User'}</strong>
-                                            <span>{reply.timestamp && !isNaN(new Date(reply.timestamp).getTime()) ? new Date(reply.timestamp).toLocaleDateString() : 'N/A'}</span>
+                                            <span>{reply.timestamp && !isNaN(new Date(reply.timestamp).getTime()) ? new Date(reply.timestamp).toLocaleString() : 'N/A'}</span>
                                           </div>
                                           <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
                                             {reply.replyText}
