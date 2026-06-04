@@ -8,13 +8,20 @@ async function auth(req, res, next) {
   }
 
   const token = header.split(' ')[1];
+  let payload;
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    payload = jwt.verify(token, process.env.JWT_SECRET);
+  } catch {
+    return res.status(401).json({ message: 'Token invalid or expired' });
+  }
+
+  try {
     req.user = await User.findById(payload.id).select('-password');
     if (!req.user) return res.status(401).json({ message: 'User not found' });
     next();
-  } catch {
-    res.status(401).json({ message: 'Token invalid or expired' });
+  } catch (dbErr) {
+    console.error('[AUTH] user lookup failed:', dbErr.message);
+    res.status(500).json({ message: 'Auth lookup failed' });
   }
 }
 
