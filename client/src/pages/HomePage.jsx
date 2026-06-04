@@ -200,7 +200,7 @@ export default function HomePage() {
               <div className="empty-state">
                 <div style={{ fontSize: 36, marginBottom: 8 }}>🔍</div>
                 <strong>No results found</strong>
-                If this is a genuinely new query, raise it in the Tracker.
+                If this is a genuinely new query, raise it in the Resolver.
                 {user && <><br /><button className="btn btn-primary" style={{ marginTop: 12 }} onClick={() => setShowRaise(true)}>+ Raise Query</button></>}
               </div>
             )}
@@ -260,7 +260,7 @@ export default function HomePage() {
           <>
             <div className="tabs">
               <button className={`tab-btn ${tab === 'baseline' ? 'active' : ''}`} onClick={() => setTab('baseline')}>
-                Baseline OAQ
+                OAQ Library
               </button>
               <button className={`tab-btn ${tab === 'trending' ? 'active' : ''}`} onClick={() => setTab('trending')}>
                 Top-15 Trending
@@ -292,7 +292,7 @@ export default function HomePage() {
                   <div className="empty-state">
                     <div style={{ fontSize: 36, marginBottom: 8 }}>💬</div>
                     <strong>No open queries with answers yet</strong>
-                    Be the first to submit an answer in the Tracker tab.
+                    Be the first to submit an answer in the Resolver tab.
                   </div>
                 )}
                 {openQueries.map(issue => (

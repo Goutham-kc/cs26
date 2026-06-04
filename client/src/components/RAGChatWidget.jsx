@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 const SECTION_LABELS = {
   '01': 'ViBe', '02': 'NOC', '03': 'Teams', '04': 'Onboarding',
   '05': 'Reports', '06': 'Finance', '07': 'Schedule', '08': 'Lab',
-  '09': 'Eval', '10': 'SP', '11': 'Yaksha', '12': 'Tracker', '13': 'General'
+  '09': 'Eval', '10': 'SP', '11': 'Yaksha', '12': 'Resolver', '13': 'General'
 };
 
 const INITIAL_MSG = {
@@ -72,7 +72,7 @@ export default function RAGChatWidget() {
         }
       }
     } catch (err) {
-      setMessages(prev => [...prev, { role: 'assistant', text: "Sorry, I couldn't process that. Try again or ask in the Tracker!" }]);
+      setMessages(prev => [...prev, { role: 'assistant', text: "Sorry, I couldn't process that. Try again or ask in the Resolver!" }]);
     } finally {
       setStreaming(false);
     }

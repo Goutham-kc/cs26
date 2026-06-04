@@ -68,7 +68,7 @@ export default function AccordionDrawer({ entry, isOpen, sessionHistory, onViewR
 
   return (
     <div className="accordion-drawer">
-      <p style={{ lineHeight: 1.7 }}>{entry.answer || <em style={{ color: 'var(--color-text-muted)' }}>No answer yet — be the first to resolve this in the Tracker.</em>}</p>
+      <p style={{ lineHeight: 1.7 }}>{entry.answer || <em style={{ color: 'var(--color-text-muted)' }}>No answer yet — be the first to resolve this in the Resolver.</em>}</p>
 
       {entry.answer && (
         <YakshaViewport
