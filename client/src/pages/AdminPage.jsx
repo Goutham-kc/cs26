@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { admin, oaq } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { ConfirmModal, InputModal, SPAdjustModal } from '../components/SharedModals';
@@ -27,6 +28,7 @@ const T = {
 
 export default function AdminPage() {
   const { user: currentUser } = useAuth();
+  const navigate = useNavigate();
   const [tab, setTab] = useState('overview');
   const [stats, setStats] = useState(null);
   const [issues, setIssues] = useState([]);
@@ -258,8 +260,8 @@ export default function AdminPage() {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
               {[
-                { label: 'Total Issues', val: stats.issues.total, sub: `${stats.issues.open} open / ${stats.issues.resolved} resolved` },
-                { label: 'Total Users', val: stats.users.total, sub: `${stats.users.mentors} mentors / ${stats.users.admins} admins` },
+                { label: 'Total Issues', val: stats.issues.total, sub: `${stats.issues.open} open / ${stats.issues.resolved} resolved / ${stats.issues.duplicate || 0} duplicate` },
+                { label: 'Total Users', val: stats.users.total, sub: `${stats.users.interns || 0} interns / ${stats.users.mentors || 0} mentors / ${stats.users.admins || 0} admins / ${stats.users.superadmins || 0} superadmins` },
                 { label: 'Pinned Issues', val: stats.pinned, sub: `${stats.featured} featured` },
                 { label: 'Top SP Holder', val: stats.topHolders[0]?.name || 'N/A', sub: `${stats.topHolders[0]?.sp || 0} SP` }
               ].map(({ label, val, sub }) => (
@@ -369,7 +371,17 @@ export default function AdminPage() {
                       {issues.map(issue => (
                         <tr key={issue._id} style={{ borderBottom: `1px solid ${T.border}` }}>
                           <td style={{ padding: '10px 14px', color: T.muted, fontFamily: T.mono }}>#{issue.issueId}</td>
-                          <td style={{ padding: '10px 14px', color: T.primary, maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={issue.queryText}>{issue.queryText}</td>
+                          <td style={{ padding: '10px 14px', color: T.primary, maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <span
+                              onClick={() => navigate(`/admin/issues/${issue._id}`)}
+                              style={{ cursor: 'pointer', fontWeight: 500 }}
+                              onMouseOver={(e) => e.target.style.textDecoration = 'underline'}
+                              onMouseOut={(e) => e.target.style.textDecoration = 'none'}
+                              title={issue.queryText}
+                            >
+                              {issue.queryText}
+                            </span>
+                          </td>
                           <td style={{ padding: '10px 14px', color: T.secondary }}>{issue.categoryTag}</td>
                           <td style={{ padding: '10px 14px' }}>
                             <span style={{ 

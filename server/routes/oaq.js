@@ -93,7 +93,7 @@ router.post('/seed-baseline', auth, requireRole('admin', 'superadmin'), async (r
         isBaseline: true,
         isPinned: false,
         isFeatured: false,
-        upvoteCount: Math.floor(Math.random() * 20) + 1,
+        upvoteCount: 1,
         priority: 'NORMAL',
         raisedBy: req.user._id,
         resolvedBy: req.user._id,
@@ -114,10 +114,10 @@ router.post('/seed-baseline', auth, requireRole('admin', 'superadmin'), async (r
 router.get('/trending', async (req, res) => {
   try {
     const top15 = await OAQIssue.aggregate([
-      { $match: { status: 'Resolved' } },
+      { $match: { status: { $in: ['Resolved', 'Open'] } } },
       { $sort: { isPinned: -1, isFeatured: -1, upvoteCount: -1, createdAt: -1 } },
       { $limit: 15 },
-      { $project: { queryText: 1, categoryTag: 1, upvoteCount: 1, answer: 1, resolvedBy: 1, isPinned: 1, isFeatured: 1 } }
+      { $project: { queryText: 1, categoryTag: 1, upvoteCount: 1, answer: 1, resolvedBy: 1, isPinned: 1, isFeatured: 1, status: 1, upvotedBy: 1, downvotedBy: 1 } }
     ]);
     res.json(top15);
   } catch (err) {
@@ -202,11 +202,20 @@ function intersectionSize(a, b) {
 
 router.get('/open-queries', async (req, res) => {
   try {
+    const { sort } = req.query;
+    let sortObj = { upvoteCount: -1, updatedAt: -1 };
+    if (sort === 'newest') {
+      sortObj = { createdAt: -1 };
+    } else if (sort === 'oldest') {
+      sortObj = { createdAt: 1 };
+    } else if (sort === 'votes') {
+      sortObj = { upvoteCount: -1, updatedAt: -1 };
+    }
+
     const issues = await OAQIssue.find({
-      status: 'Open',
-      'communityReplies.0': { $exists: true }
+      status: 'Open'
     })
-      .sort({ updatedAt: -1 })
+      .sort(sortObj)
       .limit(30)
       .populate('raisedBy', 'name')
       .populate('communityReplies.repliedBy', 'name');
@@ -221,7 +230,8 @@ router.get('/tracker', async (req, res) => {
     const issues = await OAQIssue.find({ isBaseline: false })
       .sort({ isPinned: -1, priority: -1, createdAt: -1 })
       .populate('raisedBy', 'name')
-      .populate('resolvedBy', 'name');
+      .populate('resolvedBy', 'name')
+      .populate('communityReplies.repliedBy', 'name');
     res.json(issues);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -416,12 +426,17 @@ router.post('/issues/:id/resolve', auth, async (req, res) => {
       if (io) io.emit('issue:replied', { issueId: issue._id, queryText: issue.queryText });
 
       const promoted = await checkAutoPromote(updatedIssue);
+      const finalIssue = await OAQIssue.findById(issue._id)
+        .populate('raisedBy', 'name')
+        .populate('resolvedBy', 'name')
+        .populate('communityReplies.repliedBy', 'name');
+
       if (promoted) {
         if (io) io.emit('issue:resolved', { issueId: issue._id, queryText: issue.queryText });
-        return res.json({ code: 'AUTO_PROMOTED', sp: 55, message: '3 upvotes reached — answer auto-promoted to resolved (+50 SP bonus)', issue: updatedIssue });
+        return res.json({ code: 'AUTO_PROMOTED', sp: 55, message: '3 upvotes reached — answer auto-promoted to resolved (+50 SP bonus)', issue: finalIssue });
       }
 
-      res.json({ code: 'SUBMITTED', sp: 5, message: 'Answer submitted — needs 3 upvotes to auto-resolve (+50 SP on promotion)', issue: updatedIssue });
+      res.json({ code: 'SUBMITTED', sp: 5, message: 'Answer submitted — needs 3 upvotes to auto-resolve (+50 SP on promotion)', issue: finalIssue });
     } catch (err) {
       await OAQIssue.findByIdAndUpdate(req.params.id, { $set: { lockedBy: null, lockExpiry: null } });
       throw err;
@@ -460,32 +475,49 @@ router.post('/issues/:id/reply', auth, async (req, res) => {
 
 router.patch('/issues/:id/replies/:replyId/vote', auth, async (req, res) => {
   const io = req.app.get('io');
+  const userId = req.user._id;
   try {
-    const { type } = req.body;
-    if (!['up', 'down'].includes(type)) return res.status(400).json({ message: 'type must be up or down' });
-
     const issue = await OAQIssue.findById(req.params.id);
     if (!issue) return res.status(404).json({ message: 'Issue not found' });
 
     const reply = issue.communityReplies.id(req.params.replyId);
     if (!reply) return res.status(404).json({ message: 'Reply not found' });
 
-    const inc = type === 'up' ? { upvotes: 1 } : { downvotes: 1 };
-    await OAQIssue.updateOne(
-      { _id: issue._id, 'communityReplies._id': reply._id },
-      { $inc: inc }
-    );
-
-    const updatedIssue = await OAQIssue.findById(req.params.id);
-    const updatedReply = updatedIssue.communityReplies.id(req.params.replyId);
-
-    const promoted = await checkAutoPromote(updatedIssue);
-    if (promoted) {
-      if (io) io.emit('issue:resolved', { issueId: issue._id, queryText: issue.queryText });
-      return res.json({ code: 'AUTO_PROMOTED', message: 'Reply auto-promoted by community votes', issue: updatedIssue });
+    if (!reply.upvotedBy) {
+      reply.upvotedBy = [];
     }
 
-    res.json({ reply: updatedReply, issue: updatedIssue });
+    const alreadyUpvoted = reply.upvotedBy.some(id => String(id) === String(userId));
+
+    if (alreadyUpvoted) {
+      // Remove upvote
+      reply.upvotedBy = reply.upvotedBy.filter(id => String(id) !== String(userId));
+      reply.upvotes = Math.max(0, (reply.upvotes || 0) - 1);
+    } else {
+      // Add upvote
+      reply.upvotedBy.push(userId);
+      reply.upvotes = (reply.upvotes || 0) + 1;
+    }
+
+    await issue.save();
+
+    const promoted = await checkAutoPromote(issue);
+    if (promoted) {
+      const resolvedIssue = await OAQIssue.findById(issue._id)
+        .populate('raisedBy', 'name')
+        .populate('resolvedBy', 'name')
+        .populate('communityReplies.repliedBy', 'name');
+      if (io) io.emit('issue:resolved', { issueId: issue._id, queryText: issue.queryText });
+      return res.json({ code: 'AUTO_PROMOTED', message: 'Reply auto-promoted by community votes', issue: resolvedIssue });
+    }
+
+    const finalIssue = await OAQIssue.findById(issue._id)
+      .populate('raisedBy', 'name')
+      .populate('resolvedBy', 'name')
+      .populate('communityReplies.repliedBy', 'name');
+    const finalReply = finalIssue.communityReplies.id(reply._id);
+
+    res.json({ reply: finalReply, issue: finalIssue });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -510,18 +542,23 @@ router.post('/issues/:id/community-reply', auth, async (req, res) => {
       req.params.id,
       { $push: { communityReplies: { repliedBy: req.user._id, replyText: answer } } },
       { new: true }
-    ).populate('communityReplies.repliedBy', 'name');
+    );
 
     await awardSP(req.user._id, 5, `Community reply on: Issue #${issue.issueId}`, req.params.id, 'QUERY_BONUS');
     if (io) io.emit('issue:replied', { issueId: req.params.id });
 
     const promoted = await checkAutoPromote(updatedIssue);
+    const finalIssue = await OAQIssue.findById(issue._id)
+      .populate('raisedBy', 'name')
+      .populate('resolvedBy', 'name')
+      .populate('communityReplies.repliedBy', 'name');
+
     if (promoted) {
       if (io) io.emit('issue:resolved', { issueId: issue._id, queryText: issue.queryText });
-      return res.json({ code: 'AUTO_PROMOTED', sp: 55, message: '3 upvotes reached — answer auto-promoted', issue: updatedIssue });
+      return res.json({ code: 'AUTO_PROMOTED', sp: 55, message: '3 upvotes reached — answer auto-promoted', issue: finalIssue });
     }
 
-    res.json({ code: 'SUBMITTED', sp: 5, message: 'Answer submitted — 3 upvotes to auto-resolve', issue: updatedIssue });
+    res.json({ code: 'SUBMITTED', sp: 5, message: 'Answer submitted — 3 upvotes to auto-resolve', issue: finalIssue });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -585,20 +622,97 @@ router.get('/moderation-queue', auth, requireRole('mentor', 'admin', 'superadmin
   }
 });
 
-router.patch('/issues/:id/upvote', auth, async (req, res) => {
+router.patch('/issues/:id/vote', auth, async (req, res) => {
   const io = req.app.get('io');
+  const userId = req.user._id;
+  const { type } = req.body;
+  if (type !== 'up' && type !== 'down') {
+    return res.status(400).json({ message: 'type must be up or down' });
+  }
+
   try {
-    const issue = await OAQIssue.findByIdAndUpdate(
-      req.params.id,
-      { $inc: { upvoteCount: 1 } },
-      { new: true }
-    );
+    const issue = await OAQIssue.findById(req.params.id);
+    if (!issue) return res.status(404).json({ message: 'Issue not found' });
+
+    issue.upvotedBy = issue.upvotedBy || [];
+    issue.downvotedBy = issue.downvotedBy || [];
+
+    const creatorId = issue.raisedBy;
+    let spDelta = 0;
+
+    if (type === 'up') {
+      const alreadyUpvoted = issue.upvotedBy.some(id => String(id) === String(userId));
+      if (alreadyUpvoted) {
+        // Undo upvote
+        issue.upvotedBy = issue.upvotedBy.filter(id => String(id) !== String(userId));
+        issue.upvoteCount -= 1;
+        spDelta = -5;
+      } else {
+        const alreadyDownvoted = issue.downvotedBy.some(id => String(id) === String(userId));
+        if (alreadyDownvoted) {
+          // Downvote to upvote
+          issue.downvotedBy = issue.downvotedBy.filter(id => String(id) !== String(userId));
+          issue.upvotedBy.push(userId);
+          issue.upvoteCount += 2;
+          spDelta = 10;
+        } else {
+          // New upvote
+          issue.upvotedBy.push(userId);
+          issue.upvoteCount += 1;
+          spDelta = 5;
+        }
+      }
+    } else { // type === 'down'
+      const alreadyDownvoted = issue.downvotedBy.some(id => String(id) === String(userId));
+      if (alreadyDownvoted) {
+        // Undo downvote
+        issue.downvotedBy = issue.downvotedBy.filter(id => String(id) !== String(userId));
+        issue.upvoteCount += 1;
+        spDelta = 5;
+      } else {
+        const alreadyUpvoted = issue.upvotedBy.some(id => String(id) === String(userId));
+        if (alreadyUpvoted) {
+          // Upvote to downvote
+          issue.upvotedBy = issue.upvotedBy.filter(id => String(id) !== String(userId));
+          issue.downvotedBy.push(userId);
+          issue.upvoteCount -= 2;
+          spDelta = -10;
+        } else {
+          // New downvote
+          issue.downvotedBy.push(userId);
+          issue.upvoteCount -= 1;
+          spDelta = -5;
+        }
+      }
+    }
+
+    await issue.save();
+
+    if (spDelta !== 0 && creatorId) {
+      const reason = spDelta > 0 
+        ? `Query votes increased (Issue #${issue.issueId})` 
+        : `Query votes decreased (Issue #${issue.issueId})`;
+      await awardSP(creatorId, spDelta, reason, issue._id, 'QUERY_BONUS');
+    }
+
     escalationBus.emit('issue:upvoted', issue, io);
     if (io) io.emit('issue:upvoted', { issueId: issue._id, upvoteCount: issue.upvoteCount });
-    res.json(issue);
+    
+    const finalIssue = await OAQIssue.findById(issue._id)
+      .populate('raisedBy', 'name')
+      .populate('resolvedBy', 'name')
+      .populate('communityReplies.repliedBy', 'name');
+
+    res.json(finalIssue);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
+});
+
+router.patch('/issues/:id/upvote', auth, async (req, res) => {
+  req.body = { type: 'up' };
+  req.url = `/issues/${req.params.id}/vote`;
+  router.handle(req, res);
 });
 
 router.patch('/issues/:id/duplicate', auth, async (req, res) => {
@@ -610,13 +724,19 @@ router.patch('/issues/:id/duplicate', auth, async (req, res) => {
     const duplicateOf = await OAQIssue.findById(duplicateOfId);
     if (!duplicateOf) return res.status(404).json({ message: 'Target issue not found' });
 
-    const issue = await OAQIssue.findByIdAndUpdate(
+    await OAQIssue.findByIdAndUpdate(
       req.params.id,
       { status: 'Duplicate', duplicateOf: duplicateOfId },
       { new: true }
     );
-    if (io) io.emit('issue:marked-duplicate', { issueId: issue._id, duplicateOfId });
-    res.json(issue);
+    if (io) io.emit('issue:marked-duplicate', { issueId: req.params.id, duplicateOfId });
+
+    const finalIssue = await OAQIssue.findById(req.params.id)
+      .populate('raisedBy', 'name')
+      .populate('resolvedBy', 'name')
+      .populate('communityReplies.repliedBy', 'name');
+
+    res.json(finalIssue);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -630,14 +750,20 @@ router.patch('/:id/upvote', auth, async (req, res) => {
 
 router.patch('/issues/:id/mentor-signoff', auth, requireRole('mentor', 'admin'), async (req, res) => {
   try {
-    const issue = await OAQIssue.findByIdAndUpdate(
+    await OAQIssue.findByIdAndUpdate(
       req.params.id,
       { status: 'Resolved' },
       { new: true }
     );
     const io = req.app.get('io');
-    if (io) io.emit('issue:resolved', { issueId: issue._id, queryText: issue.queryText });
-    res.json(issue);
+    if (io) io.emit('issue:resolved', { issueId: req.params.id, queryText: req.body.queryText });
+
+    const finalIssue = await OAQIssue.findById(req.params.id)
+      .populate('raisedBy', 'name')
+      .populate('resolvedBy', 'name')
+      .populate('communityReplies.repliedBy', 'name');
+
+    res.json(finalIssue);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

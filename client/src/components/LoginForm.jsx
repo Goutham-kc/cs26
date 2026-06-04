@@ -26,7 +26,7 @@ export default function LoginForm({ onAuth }) {
       const data = mode === 'login'
         ? await login(form.email, form.password)
         : await register(form.name, form.email, form.password, form.role);
-      onAuth(data.user);
+      onAuth(data.user, data.token);
     } catch (err) {
       setError(err.message);
     } finally {

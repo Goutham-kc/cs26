@@ -9,20 +9,11 @@ const SECTION_NAMES = {
   '10': 'SP & Gamification', '11': 'Yaksha-mini', '12': 'OAQ Tracker', '13': 'General / Other'
 };
 
-const SORT_OPTIONS = [
-  { value: 'id',      label: 'By ID (Default)' },
-  { value: 'popular', label: 'Most Upvoted' },
-  { value: 'alpha',   label: 'A → Z' },
-  { value: 'newest',  label: 'Newest First' },
-  { value: 'oldest',  label: 'Oldest First' },
-];
-
 export default function BaselineOAQ({ filteredSections }) {
   const [entries,     setEntries]     = useState([]);
   const [open,        setOpen]        = useState(null);
   const [loading,     setLoading]     = useState(true);
   const [sessionHistory, setSessionHistory] = useState([]);
-  const [sort,        setSort]        = useState('id');
   const [recEntry,    setRecEntry]    = useState(null);
 
   useEffect(() => {
@@ -35,11 +26,6 @@ export default function BaselineOAQ({ filteredSections }) {
     let list = filteredSections && filteredSections.length > 0
       ? entries.filter(e => filteredSections.includes(e.categoryTag))
       : entries;
-
-    if (sort === 'popular') list = [...list].sort((a, b) => b.upvoteCount - a.upvoteCount);
-    if (sort === 'alpha')   list = [...list].sort((a, b) => a.queryText.localeCompare(b.queryText));
-    if (sort === 'newest')  list = [...list].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    if (sort === 'oldest')  list = [...list].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
     return list;
   })();
 
@@ -79,12 +65,6 @@ export default function BaselineOAQ({ filteredSections }) {
         <p className="section-label" style={{ margin: 0 }}>
           Baseline OAQ — {visible.length} of {entries.length} Entries · Always Visible · No Login Required
         </p>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          
-          <select value={sort} onChange={e => setSort(e.target.value)} style={{ padding: '4px 8px', borderRadius: 'var(--radius)', border: '1px solid var(--color-border)', fontSize: 11, fontFamily: 'var(--font-mono)', background: 'var(--color-bg)', color: 'var(--color-text-primary)', cursor: 'pointer' }}>
-            {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
-        </div>
       </div>
       <div style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius)' }}>
         {visible.map((entry, i) => (

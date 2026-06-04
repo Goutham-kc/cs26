@@ -47,38 +47,6 @@ function Reply({ reply, threadId, onVote, onAccept, onReply, currentUser, depth 
           <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>{reply.replyText}</div>
           <div style={{ display: 'flex', gap: 12, marginTop: 10, alignItems: 'center' }}>
             <button
-              onClick={() => onVote(threadId, reply._id, 'up')}
-              style={{
-                background: 'var(--color-surface)',
-                border: '1px solid var(--color-border)',
-                borderRadius: 4,
-                cursor: 'pointer',
-                fontSize: 12,
-                color: 'var(--color-text-primary)',
-                padding: '4px 10px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-                fontWeight: 600
-              }}
-            >
-              ▲ {score}
-            </button>
-            <button
-              onClick={() => onVote(threadId, reply._id, 'down')}
-              style={{
-                background: 'var(--color-surface)',
-                border: '1px solid var(--color-border)',
-                borderRadius: 4,
-                cursor: 'pointer',
-                fontSize: 12,
-                color: 'var(--color-text-primary)',
-                padding: '4px 10px'
-              }}
-            >
-              ▼
-            </button>
-            <button
               onClick={() => onReply(reply._id)}
               style={{
                 background: 'var(--color-surface)',
@@ -163,7 +131,7 @@ export default function ThreadsPage() {
   const [page, setPage] = useState(1);
   const [selectedThread, setSelectedThread] = useState(null);
   const [threadDetail, setThreadDetail] = useState(null);
-  const [filter, setFilter] = useState({ status: '', priority: '', category: '' });
+  const [filter, setFilter] = useState({ status: '', priority: '', category: '', sort: '' });
   const [showCreate, setShowCreate] = useState(false);
   const [createData, setCreateData] = useState({ title: '', body: '', categoryTag: '13', labels: '' });
   const [createSubmitting, setCreateSubmitting] = useState(false);
@@ -190,6 +158,7 @@ export default function ThreadsPage() {
       if (filter.status) q.status = filter.status;
       if (filter.priority) q.priority = filter.priority;
       if (filter.category) q.category = filter.category;
+      if (filter.sort) q.sort = filter.sort;
       q.page = page;
       q.limit = 15;
       const data = await threads.list(q);
@@ -715,6 +684,12 @@ return (
             <option value="">All Priority</option>
             <option value="HIGH">High</option>
             <option value="NORMAL">Normal</option>
+          </select>
+          <select style={{ marginLeft: 8, padding: '4px 8px', fontSize: 11, border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', background: 'var(--color-bg)', color: 'var(--color-text-primary)' }} value={filter.sort} onChange={e => setFilter(f => ({ ...f, sort: e.target.value }))}>
+            <option value="">Sort: Default</option>
+            <option value="newest">Sort: Newest</option>
+            <option value="oldest">Sort: Oldest</option>
+            <option value="votes">Sort: Most Upvoted</option>
           </select>
         </div>
 

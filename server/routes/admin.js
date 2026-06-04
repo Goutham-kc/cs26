@@ -25,9 +25,12 @@ router.get('/stats', async (req, res) => {
       totalIssues,
       openIssues,
       resolvedIssues,
+      duplicateIssues,
       totalUsers,
       totalMentors,
       totalAdmins,
+      totalInterns,
+      totalSuperadmins,
       pinnedIssues,
       featuredIssues,
       recentLedger
@@ -35,9 +38,12 @@ router.get('/stats', async (req, res) => {
       OAQIssue.countDocuments(since ? { ...baseFilter } : {}),
       OAQIssue.countDocuments({ status: 'Open', ...(since ? { createdAt: { $gte: since } } : {}) }),
       OAQIssue.countDocuments({ status: 'Resolved', ...(since ? { createdAt: { $gte: since } } : {}) }),
+      OAQIssue.countDocuments({ status: 'Duplicate', ...(since ? { createdAt: { $gte: since } } : {}) }),
       User.countDocuments(since ? { ...baseFilter } : {}),
       User.countDocuments({ role: 'mentor', ...(since ? { createdAt: { $gte: since } } : {}) }),
       User.countDocuments({ role: 'admin', ...(since ? { createdAt: { $gte: since } } : {}) }),
+      User.countDocuments({ role: 'intern', ...(since ? { createdAt: { $gte: since } } : {}) }),
+      User.countDocuments({ role: 'superadmin', ...(since ? { createdAt: { $gte: since } } : {}) }),
       OAQIssue.countDocuments({ isPinned: true, ...(since ? { createdAt: { $gte: since } } : {}) }),
       OAQIssue.countDocuments({ isFeatured: true, ...(since ? { createdAt: { $gte: since } } : {}) }),
       SPLedger.find(since ? { createdAt: { $gte: since } } : {}).sort({ createdAt: -1 }).limit(10)
@@ -47,8 +53,8 @@ router.get('/stats', async (req, res) => {
     const topHolders = await User.find().sort({ sp: -1 }).limit(5).select('name email role sp');
 
     res.json({
-      issues: { total: totalIssues, open: openIssues, resolved: resolvedIssues },
-      users: { total: totalUsers, mentors: totalMentors, admins: totalAdmins },
+      issues: { total: totalIssues, open: openIssues, resolved: resolvedIssues, duplicate: duplicateIssues },
+      users: { total: totalUsers, mentors: totalMentors, admins: totalAdmins, interns: totalInterns, superadmins: totalSuperadmins },
       pinned: pinnedIssues,
       featured: featuredIssues,
       topHolders,

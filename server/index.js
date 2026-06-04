@@ -47,7 +47,7 @@ io.on('connection', (socket) => {
   socket.on('join:mentors', () => socket.join('mentors'));
 
   socket.on('disconnect', () => {
-    console.log(`[WS] client disconnected: ${socket.id}`);
+    console.log(`[WS] Client disconnected: ${socket.id}`);
   });
 });
 

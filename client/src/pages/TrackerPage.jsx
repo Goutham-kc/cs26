@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
@@ -13,7 +13,10 @@ const SECTION_LABELS = {
 };
 
 function timeAgo(dateStr) {
-  const ms = Date.now() - new Date(dateStr).getTime();
+  if (!dateStr) return 'N/A';
+  const parsed = new Date(dateStr).getTime();
+  if (isNaN(parsed)) return 'N/A';
+  const ms = Date.now() - parsed;
   const m = Math.floor(ms / 60000);
   if (m < 1) return 'just now';
   if (m < 60) return `${m}m ago`;
@@ -33,9 +36,17 @@ export default function TrackerPage() {
   const [selected, setSelected] = useState(null);
   const [showRaise, setShowRaise] = useState(false);
   const [filter, setFilter]     = useState('all');
+  const [expandedIssues, setExpandedIssues] = useState({});
   const { user }    = useAuth();
   const { socket }  = useSocket();
   const { addToast } = useToast();
+
+  const toggleExpand = (issueId) => {
+    setExpandedIssues(prev => ({
+      ...prev,
+      [issueId]: !prev[issueId]
+    }));
+  };
 
   const load = () => {
     setLoading(true);
@@ -62,12 +73,29 @@ export default function TrackerPage() {
     };
   }, [socket]);
 
-  const handleUpvote = async (issue) => {
-    if (!user) { addToast('Sign in to upvote'); return; }
+  const handleVoteQuery = async (issueId, type) => {
+    if (!user) { addToast('Sign in to vote'); return; }
     try {
-      await api.patch(`/oaq/issues/${issue._id}/upvote`);
+      await api.patch(`/oaq/issues/${issueId}/vote`, { type });
       load();
     } catch (err) { addToast(err.message); }
+  };
+
+  const handleReplyVote = async (issueId, replyId, type) => {
+    if (!user) { addToast('Sign in to vote'); return; }
+    try {
+      const result = await api.patch(`/oaq/issues/${issueId}/replies/${replyId}/vote`, { type });
+      if (result.code === 'AUTO_PROMOTED') {
+        addToast('Answer promoted to resolved! +50 SP awarded', { type: 'success' });
+      }
+      if (result.issue) {
+        setIssues(prev => prev.map(q => q._id === issueId ? result.issue : q));
+      } else {
+        load();
+      }
+    } catch (err) {
+      addToast(err.message, { type: 'error' });
+    }
   };
 
   const handleMentorSignoff = async (issue) => {
@@ -150,63 +178,162 @@ export default function TrackerPage() {
             <tbody>
               {filtered.map(issue => {
                 const stale = isStale(issue);
-                const rowStyle = stale ? { background: '#FFF7ED', borderLeft: '3px solid #F97316' } : {};
+                const isExpanded = !!expandedIssues[issue._id];
+                const rowStyle = {
+                  cursor: 'pointer',
+                  ...(stale ? { background: 'var(--color-amber-bg)', borderLeft: '3px solid var(--color-amber)' } : {}),
+                  ...(isExpanded ? { borderBottom: 'none' } : {})
+                };
                 return (
-                  <tr key={issue._id} style={rowStyle}>
-                  <td className="issue-id">#{issue.issueId}</td>
-                  <td style={{ maxWidth: 300 }}>
-                    <span style={{ fontSize: 12, lineHeight: 1.5 }}>{issue.queryText}</span>
-                    {issue.communityReplies?.length > 0 && (
-                      <span style={{ fontSize: 10, color: 'var(--color-text-muted)', display: 'block', marginTop: 2 }}>
-                        {issue.communityReplies.length} repl{issue.communityReplies.length === 1 ? 'y' : 'ies'}
-                      </span>
+                  <Fragment key={issue._id}>
+                    <tr style={rowStyle} onClick={() => toggleExpand(issue._id)}>
+                      <td className="issue-id">#{issue.issueId}</td>
+                      <td style={{ maxWidth: 300 }}>
+                        <span style={{ fontSize: 12, lineHeight: 1.5, fontWeight: isExpanded ? 600 : 400 }}>{issue.queryText}</span>
+                        {issue.communityReplies?.length > 0 && (
+                          <span style={{ fontSize: 10, color: 'var(--color-text-muted)', display: 'block', marginTop: 2 }}>
+                            {issue.communityReplies.length} repl{issue.communityReplies.length === 1 ? 'y' : 'ies'} {isExpanded ? '▲' : '▼'}
+                          </span>
+                        )}
+                      </td>
+                      <td>
+                        <span className="tag" style={{ fontSize: 10, fontFamily: 'var(--font-mono)', padding: '2px 6px', border: '1px solid var(--color-border)', borderRadius: '2px' }}>
+                          {SECTION_LABELS[issue.categoryTag] || issue.categoryTag}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`badge ${issue.status === 'Open' ? 'badge-open' : 'badge-resolved'}`}>
+                          {issue.status}
+                        </span>
+                      </td>
+                      <td>
+                        {issue.priority === 'HIGH' && (
+                          <span className="badge badge-high">HIGH ⚡</span>
+                        )}
+                        {issue.priority === 'NORMAL' && (
+                          <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>Normal</span>
+                        )}
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                          <button 
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              handleVoteQuery(issue._id, 'up'); 
+                            }}
+                            style={{
+                              background: issue.upvotedBy?.some(id => String(id?._id || id) === String(user?._id || user)) ? 'var(--color-teal)' : 'transparent',
+                              color: issue.upvotedBy?.some(id => String(id?._id || id) === String(user?._id || user)) ? 'var(--color-inv-text)' : 'var(--color-text-muted)',
+                              border: '1px solid var(--color-border)',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '11px',
+                              fontWeight: '700',
+                              padding: '4px 8px',
+                              fontFamily: 'var(--font-mono)',
+                              transition: 'all 0.2s ease',
+                              minWidth: '28px',
+                              textAlign: 'center',
+                            }}
+                            title={issue.upvotedBy?.some(id => String(id?._id || id) === String(user?._id || user)) ? "Remove vote" : "Upvote"}
+                          >
+                            {issue.upvoteCount || 0}
+                          </button>
+                        </div>
+                      </td>
+                      <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+                        {issue.raisedBy?.name || '—'}
+                      </td>
+                      <td style={{ fontSize: 10, color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>
+                        {timeAgo(issue.createdAt)}
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', gap: 4 }}>
+                          {issue.status === 'Open' && user && (
+                            <button className="btn btn-sm btn-primary" onClick={(e) => { e.stopPropagation(); setSelected(issue); }}>
+                              Resolve
+                            </button>
+                          )}
+                          {issue.status === 'Open' && (user?.role === 'mentor' || user?.role === 'admin') && (
+                            <button className="btn btn-sm" onClick={(e) => { e.stopPropagation(); handleMentorSignoff(issue); }}>
+                              Sign Off
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                    {isExpanded && (
+                      <tr style={{ background: 'var(--color-surface-hover)' }}>
+                        <td colSpan={9} style={{ padding: '16px 20px', borderTop: 'none', borderBottom: '1px solid var(--color-border)' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            {issue.status === 'Resolved' && issue.answer && (
+                              <div style={{ padding: '12px 16px', background: 'var(--color-surface)', borderRadius: 'var(--radius)', border: '1px solid var(--color-border)' }}>
+                                <div style={{ fontSize: 10, color: 'var(--color-teal)', fontFamily: 'var(--font-mono)', fontWeight: 'bold', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.08em' }}>✓ Approved Answer</div>
+                                <div style={{ fontSize: 12, color: 'var(--color-text-primary)', lineHeight: 1.6 }}>{issue.answer}</div>
+                              </div>
+                            )}
+                            
+                            <div>
+                              <div style={{ fontSize: 10, color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)', fontWeight: 'bold', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                                Community Replies ({(issue.communityReplies || []).length})
+                              </div>
+                              {(issue.communityReplies || []).length > 0 ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                  {(issue.communityReplies || []).map(reply => {
+                                    const hasVoted = reply.upvotedBy?.some(id => {
+                                      const currentId = user?._id || user;
+                                      const voterId = id?._id || id;
+                                      return currentId && voterId && String(voterId) === String(currentId);
+                                    });
+                                    return (
+                                      <div key={reply._id} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '10px 14px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius)' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 32 }}>
+                                          <button 
+                                            onClick={(e) => { e.stopPropagation(); handleReplyVote(issue._id, reply._id, 'up'); }} 
+                                            style={{
+                                              background: hasVoted ? 'var(--color-teal)' : 'transparent',
+                                              color: hasVoted ? 'var(--color-inv-text)' : 'var(--color-text-muted)',
+                                              border: '1px solid var(--color-border)',
+                                              borderRadius: '4px',
+                                              cursor: 'pointer',
+                                              fontSize: '11px',
+                                              fontWeight: '700',
+                                              padding: '4px 8px',
+                                              fontFamily: 'var(--font-mono)',
+                                              transition: 'all 0.2s ease',
+                                              minWidth: '28px',
+                                              textAlign: 'center',
+                                            }}
+                                            title={hasVoted ? "Remove vote" : "Upvote"}
+                                          >
+                                            {reply.upvotes || 0}
+                                          </button>
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                          <div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 4, display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-mono)' }}>
+                                            <strong>{reply.repliedBy?.name || 'Unknown User'}</strong>
+                                            <span>{reply.timestamp && !isNaN(new Date(reply.timestamp).getTime()) ? new Date(reply.timestamp).toLocaleString() : 'N/A'}</span>
+                                          </div>
+                                          <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
+                                            {reply.replyText}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <div style={{ fontSize: 11, color: 'var(--color-text-muted)', fontStyle: 'italic', paddingLeft: 4 }}>
+                                  No community replies submitted yet.
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
                     )}
-                  </td>
-                  <td>
-                    <span className="tag" style={{ fontSize: 10, fontFamily: 'var(--font-mono)', padding: '2px 6px', border: '1px solid var(--color-border)', borderRadius: '2px' }}>
-                      {SECTION_LABELS[issue.categoryTag] || issue.categoryTag}
-                    </span>
-                  </td>
-                  <td>
-                    <span className={`badge ${issue.status === 'Open' ? 'badge-open' : 'badge-resolved'}`}>
-                      {issue.status}
-                    </span>
-                  </td>
-                  <td>
-                    {issue.priority === 'HIGH' && (
-                      <span className="badge badge-high">HIGH ⚡</span>
-                    )}
-                    {issue.priority === 'NORMAL' && (
-                      <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>Normal</span>
-                    )}
-                  </td>
-                  <td>
-                    <button className="upvote-btn" onClick={() => handleUpvote(issue)}>
-                      ▲ {issue.upvoteCount}
-                    </button>
-                  </td>
-                  <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
-                    {issue.raisedBy?.name || '—'}
-                  </td>
-                  <td style={{ fontSize: 10, color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>
-                    {timeAgo(issue.createdAt)}
-                  </td>
-                  <td>
-                    <div style={{ display: 'flex', gap: 4 }}>
-                      {issue.status === 'Open' && user && (
-                        <button className="btn btn-sm btn-primary" onClick={() => setSelected(issue)}>
-                          Resolve
-                        </button>
-                      )}
-                      {issue.status === 'Open' && (user?.role === 'mentor' || user?.role === 'admin') && (
-                        <button className="btn btn-sm" onClick={() => handleMentorSignoff(issue)}>
-                          Sign Off
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-                )
+                  </Fragment>
+                );
               })}
             </tbody>
           </table>

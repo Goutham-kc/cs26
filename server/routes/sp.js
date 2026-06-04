@@ -23,20 +23,20 @@ router.get('/wallet', auth, async (req, res) => {
           }
         }
       ]),
-      User.countDocuments({ role: 'intern' }),
+      User.countDocuments({}),
       SPLedger.countDocuments({ userId, event: 'FCFS_WIN' })
     ]);
 
-    const rankData = await User.countDocuments({ role: 'intern', sp: { $gt: user.sp } });
+    const rankData = await User.countDocuments({ sp: { $gt: user.sp } });
     const rank = rankData + 1;
 
-    const top50Threshold = await User.findOne({ role: 'intern' })
+    const top50Threshold = await User.findOne({})
       .sort({ sp: -1 })
       .skip(49)
       .select('sp')
       .then(u => u?.sp || 0);
     const spToTop50 = Math.max(0, top50Threshold - user.sp + 1);
-    const spToTop10 = await User.findOne({ role: 'intern' })
+    const spToTop10 = await User.findOne({})
       .sort({ sp: -1 })
       .skip(9)
       .select('sp')
@@ -135,7 +135,7 @@ router.get('/leaderboard', auth, async (req, res) => {
   try {
     const limit = Math.min(Number(req.query.limit) || 10, 50);
 
-    const board = await User.find({ role: 'intern' })
+    const board = await User.find({})
       .sort({ sp: -1 })
       .limit(limit)
       .select('name sp joinDate');

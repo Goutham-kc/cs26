@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { oaq, api } from '../services/api';
 import { useToast } from '../context/ToastContext';
+import YakshaViewport from './YakshaViewport';
+import { localYakshaCheck } from '../services/yakshaCheck';
 
 export default function OpenQueryCard({ issue, currentUser, onVote }) {
   const { addToast } = useToast();
@@ -12,10 +14,12 @@ export default function OpenQueryCard({ issue, currentUser, onVote }) {
   const [dupResults, setDupResults] = useState([]);
   const [dupLoading, setDupLoading] = useState(false);
   const [markingDup, setMarkingDup] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
-  const hasAnswered = issue.communityReplies?.some(
+  const hasAnswered = (issue.communityReplies || []).some(
     r => r.repliedBy?._id === currentUser?._id || r.repliedBy === currentUser?._id
   );
+  const preview = replyText.length > 0 ? localYakshaCheck(replyText, issue.queryText) : null;
 
   const handleVote = async (replyId, type) => {
     if (votingId) return;
@@ -23,7 +27,7 @@ export default function OpenQueryCard({ issue, currentUser, onVote }) {
     try {
       const result = await oaq.voteReply(issue._id, replyId, type);
       if (result.code === 'AUTO_PROMOTED') addToast('Answer promoted to resolved! +50 SP awarded', { type: 'success' });
-      onVote();
+      onVote(result.issue);
     } catch (e) {
       addToast(e.message, { type: 'error' });
     } finally {
@@ -83,78 +87,129 @@ export default function OpenQueryCard({ issue, currentUser, onVote }) {
 
   return (
     <div style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', marginBottom: 12, overflow: 'hidden' }}>
-      <div style={{ padding: '14px 18px', background: 'var(--color-surface)' }}>
-        <div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 4, fontFamily: 'var(--font-mono)', letterSpacing: '0.08em', display: 'flex', gap: 8, alignItems: 'center' }}>
-          <span>§{issue.categoryTag} · <button onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('oaq:show-user-profile', { detail: issue.raisedBy._id || issue.raisedBy })); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', fontFamily: 'inherit', fontSize: 'inherit', padding: 0 }}>{issue.raisedBy?.name || 'Unknown'}</button> · {new Date(issue.createdAt).toLocaleDateString()}</span>
-          {hasAnswered && (
-            <span style={{ background: 'var(--color-teal)', color: '#fff', fontSize: 9, padding: '2px 6px', borderRadius: 3, fontWeight: 600, letterSpacing: '0.08em' }}>✓ YOU ANSWERED</span>
-          )}
+      <div 
+        onClick={() => setIsExpanded(!isExpanded)}
+        style={{ padding: '14px 18px', background: 'var(--color-surface)', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', userSelect: 'none' }}
+      >
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 4, fontFamily: 'var(--font-mono)', letterSpacing: '0.08em', display: 'flex', gap: 8, alignItems: 'center' }}>
+            <span>§{issue.categoryTag} · <button onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('oaq:show-user-profile', { detail: issue.raisedBy?._id || issue.raisedBy })); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', fontFamily: 'inherit', fontSize: 'inherit', padding: 0 }}>{issue.raisedBy?.name || 'Unknown'}</button> · {issue.createdAt && !isNaN(new Date(issue.createdAt).getTime()) ? new Date(issue.createdAt).toLocaleDateString() : 'N/A'}</span>
+            {hasAnswered && (
+              <span style={{ background: 'var(--color-teal)', color: '#fff', fontSize: 9, padding: '2px 6px', borderRadius: 3, fontWeight: 600, letterSpacing: '0.08em' }}>✓ YOU ANSWERED</span>
+            )}
+          </div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)' }}>{issue.queryText}</div>
         </div>
-        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)' }}>{issue.queryText}</div>
+        <span style={{ fontSize: 16, color: 'var(--color-text-muted)', paddingLeft: 12 }}>
+          {isExpanded ? '−' : '+'}
+        </span>
       </div>
 
-      {issue.communityReplies.map(reply => {
-        const score = (reply.upvotes || 0) - (reply.downvotes || 0);
-        return (
-          <div key={reply._id} style={{ padding: '10px 18px', borderTop: '1px solid var(--color-border)', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, minWidth: 30 }}>
-              <button onClick={() => handleVote(reply._id, 'up')} disabled={votingId === reply._id} style={{ background: 'none', border: '1px solid var(--color-border)', borderRadius: 3, cursor: 'pointer', fontSize: 11, padding: '2px 5px', color: 'var(--color-text-muted)' }}>▲</button>
-              <span style={{ fontSize: 12, fontWeight: 700, color: score > 0 ? 'var(--color-teal)' : score < 0 ? 'var(--color-red)' : 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>{score}</span>
-              <button onClick={() => handleVote(reply._id, 'down')} disabled={votingId === reply._id} style={{ background: 'none', border: '1px solid var(--color-border)', borderRadius: 3, cursor: 'pointer', fontSize: 11, padding: '2px 5px', color: 'var(--color-text-muted)' }}>▼</button>
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 3, fontFamily: 'var(--font-mono)' }}>
-                <button onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('oaq:show-user-profile', { detail: reply.repliedBy?._id || reply.repliedBy })); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', fontFamily: 'inherit', fontSize: 'inherit', padding: 0 }}>{reply.repliedBy?.name || 'Unknown'}</button>
-                {reply.isPromoted && <span style={{ color: 'var(--color-teal)', marginLeft: 6, fontWeight: 600 }}>✓ PROMOTED</span>}
+      {isExpanded && (
+        <>
+          {(issue.communityReplies || []).map(reply => {
+            const hasVoted = reply.upvotedBy?.some(id => {
+              const currentId = currentUser?._id || currentUser;
+              const voterId = id?._id || id;
+              return currentId && voterId && String(voterId) === String(currentId);
+            });
+            return (
+              <div key={reply._id} style={{ padding: '10px 18px', borderTop: '1px solid var(--color-border)', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 32 }}>
+                  <button
+                    onClick={() => {
+                      if (!currentUser) {
+                        addToast('Sign in to vote', { type: 'error' });
+                        return;
+                      }
+                      handleVote(reply._id, 'up');
+                    }}
+                    disabled={votingId === reply._id}
+                    title={hasVoted ? "Remove vote" : "Upvote"}
+                    style={{
+                      background: hasVoted ? 'var(--color-teal)' : 'transparent',
+                      color: hasVoted ? 'var(--color-inv-text)' : 'var(--color-text-muted)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '11px',
+                      fontWeight: '700',
+                      padding: '4px 8px',
+                      fontFamily: 'var(--font-mono)',
+                      transition: 'all 0.2s ease',
+                      minWidth: '28px',
+                      textAlign: 'center',
+                    }}
+                  >
+                    {reply.upvotes || 0}
+                  </button>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 3, fontFamily: 'var(--font-mono)', display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <button onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('oaq:show-user-profile', { detail: reply.repliedBy?._id || reply.repliedBy })); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', fontFamily: 'inherit', fontSize: 'inherit', padding: 0 }}>{reply.repliedBy?.name || 'Unknown'}</button>
+                    <span>·</span>
+                    <span>{reply.timestamp && !isNaN(new Date(reply.timestamp).getTime()) ? new Date(reply.timestamp).toLocaleString() : 'N/A'}</span>
+                    {reply.isPromoted && <span style={{ color: 'var(--color-teal)', marginLeft: 6, fontWeight: 600 }}>✓ PROMOTED</span>}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>{reply.replyText}</div>
+                </div>
               </div>
-              <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>{reply.replyText}</div>
-            </div>
-          </div>
-        );
-      })}
+            );
+          })}
 
-      {currentUser && (
-        hasAnswered ? (
-          <div style={{ padding: '10px 18px', borderTop: '1px solid var(--color-border)', fontSize: 11, color: 'var(--color-teal)', fontFamily: 'var(--font-mono)', letterSpacing: '0.06em' }}>
-            ✓ You submitted an answer to this issue
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} style={{ padding: '10px 18px', borderTop: '1px solid var(--color-border)', display: 'flex', gap: 8 }}>
-            <input value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Submit your answer…" style={{ flex: 1, padding: '6px 10px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', fontSize: 12, fontFamily: 'var(--font-mono)', background: 'var(--color-bg)', color: 'var(--color-text-primary)' }} />
-            <button type="submit" disabled={submitting || !replyText.trim()} style={{ padding: '6px 14px', background: submitting || !replyText.trim() ? 'var(--color-border)' : 'var(--color-primary)', color: submitting || !replyText.trim() ? 'var(--color-text-muted)' : 'var(--color-inv-text)', border: 'none', borderRadius: 'var(--radius)', fontSize: 12, cursor: submitting ? 'not-allowed' : 'pointer', fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap' }}>
-              {submitting ? '…' : 'Submit'}
-            </button>
-          </form>
-        )
-      )}
+          {currentUser && (
+            hasAnswered ? (
+              <div style={{ padding: '10px 18px', borderTop: '1px solid var(--color-border)', fontSize: 11, color: 'var(--color-teal)', fontFamily: 'var(--font-mono)', letterSpacing: '0.06em' }}>
+                ✓ You submitted an answer to this issue
+              </div>
+            ) : (
+              <div style={{ padding: '10px 18px', borderTop: '1px solid var(--color-border)' }}>
+                <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 8, marginBottom: preview ? 12 : 0 }}>
+                  <input value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Submit your answer…" style={{ flex: 1, padding: '6px 10px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', fontSize: 12, fontFamily: 'var(--font-mono)', background: 'var(--color-bg)', color: 'var(--color-text-primary)' }} />
+                  <button type="submit" disabled={submitting || !replyText.trim() || (preview && !preview.passed)} style={{ padding: '6px 14px', background: submitting || !replyText.trim() || (preview && !preview.passed) ? 'var(--color-border)' : 'var(--color-primary)', color: submitting || !replyText.trim() || (preview && !preview.passed) ? 'var(--color-text-muted)' : 'var(--color-inv-text)', border: 'none', borderRadius: 'var(--radius)', fontSize: 12, cursor: submitting || (preview && !preview.passed) ? 'not-allowed' : 'pointer', fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap' }}>
+                    {submitting ? '…' : 'Submit'}
+                  </button>
+                </form>
+                {preview && (
+                  <YakshaViewport
+                    activeText={replyText.slice(0, 100) + (replyText.length > 100 ? '…' : '')}
+                    auditStatus={preview.passed ? 'pass' : 'fail'}
+                    auditReason={preview.reason}
+                  />
+                )}
+              </div>
+            )
+          )}
 
-      {isAuthor && (
-        <div style={{ padding: '10px 18px', borderTop: '1px solid var(--color-border)' }}>
-          {!showDup ? (
-            <button onClick={() => setShowDup(true)} style={{ background: 'none', border: '1px solid var(--color-border)', borderRadius: 3, cursor: 'pointer', fontSize: 11, padding: '4px 10px', color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>
-              + Mark as Duplicate
-            </button>
-          ) : (
-            <div>
-              <input
-                value={dupQ}
-                onChange={e => setDupQ(e.target.value)}
-                placeholder="Search duplicate query..."
-                style={{ width: '100%', padding: '6px 10px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', fontSize: 12, fontFamily: 'var(--font-mono)', background: 'var(--color-bg)', color: 'var(--color-text-primary)', marginBottom: 6 }}
-              />
-              {dupLoading && <div style={{ fontSize: 11, color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>...</div>}
-              {dupResults.length > 0 && (
-                <div style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
-                  {dupResults.map(r => (
-                    <button key={r._id} onClick={() => handleMarkDuplicate(r._id)} disabled={markingDup} style={{ width: '100%', textAlign: 'left', padding: '8px 12px', background: 'none', border: 'none', borderBottom: '1px solid var(--color-border)', cursor: markingDup ? 'not-allowed' : 'pointer', fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--color-text-secondary)' }}>
-                      {r.queryText}
-                    </button>
-                  ))}
+          {isAuthor && (
+            <div style={{ padding: '10px 18px', borderTop: '1px solid var(--color-border)' }}>
+              {!showDup ? (
+                <button onClick={() => setShowDup(true)} style={{ background: 'none', border: '1px solid var(--color-border)', borderRadius: 3, cursor: 'pointer', fontSize: 11, padding: '4px 10px', color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>
+                  + Mark as Duplicate
+                </button>
+              ) : (
+                <div>
+                  <input
+                    value={dupQ}
+                    onChange={e => setDupQ(e.target.value)}
+                    placeholder="Search duplicate query..."
+                    style={{ width: '100%', padding: '6px 10px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', fontSize: 12, fontFamily: 'var(--font-mono)', background: 'var(--color-bg)', color: 'var(--color-text-primary)', marginBottom: 6 }}
+                  />
+                  {dupLoading && <div style={{ fontSize: 11, color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>...</div>}
+                  {dupResults.length > 0 && (
+                    <div style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+                      {dupResults.map(r => (
+                        <button key={r._id} onClick={() => handleMarkDuplicate(r._id)} disabled={markingDup} style={{ width: '100%', textAlign: 'left', padding: '8px 12px', background: 'none', border: 'none', borderBottom: '1px solid var(--color-border)', cursor: markingDup ? 'not-allowed' : 'pointer', fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--color-text-secondary)' }}>
+                          {r.queryText}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           )}
-        </div>
+        </>
       )}
     </div>
   );

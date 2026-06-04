@@ -126,7 +126,7 @@ export const oaq = {
   flagReply: (issueId, replyId) => api.patch(`/oaq/issues/${issueId}/replies/${replyId}/flag`),
   promoteReply: (issueId, replyId) => api.patch(`/oaq/issues/${issueId}/replies/${replyId}/promote`),
   getModerationQueue: () => api.get('/oaq/moderation-queue'),
-  getOpenQueries: () => api.get('/oaq/open-queries'),
+  getOpenQueries: (sort) => api.get('/oaq/open-queries' + (sort ? `?sort=${sort}` : '')),
   submitReply: (issueId, answer) => api.post(`/oaq/issues/${issueId}/community-reply`, { answer }),
   markDuplicate: (issueId, duplicateOfId) => api.patch(`/oaq/issues/${issueId}/duplicate`, { duplicateOfId }),
 };
